@@ -91,7 +91,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     init = subparsers.add_parser("init", help="Create the Hermes config directory.")
     init.add_argument(
-        "--force", action="store_true", help="Overwrite existing config/env files."
+        "--force",
+        action="store_true",
+        help="Overwrite existing config.json (the .env file is never overwritten).",
     )
     init.set_defaults()
 
@@ -386,13 +388,16 @@ def cmd_ask(args: argparse.Namespace) -> int:
 
     def approve(tool, arguments):
         # Keep approval prompts visible even in quiet/JSON mode.
-        if quiet_console is None:
-            return ui.confirm_tool(tool.name, arguments)
-        ui.console = original_console
-        try:
-            return ui.confirm_tool(tool.name, arguments)
-        finally:
-            ui.console = quiet_console
+        if quiet_console is not None:
+            if not sys.stdin.isatty():
+                # Never contaminate machine-readable output with prompts.
+                return False
+            ui.console = original_console
+            try:
+                return ui.confirm_tool(tool.name, arguments)
+            finally:
+                ui.console = quiet_console
+        return ui.confirm_tool(tool.name, arguments)
 
     try:
         agent = Agent(
@@ -501,6 +506,7 @@ def cmd_sessions(args: argparse.Namespace) -> int:
             names = [
                 str((call.get("function") or {}).get("name") or "?")
                 for call in message["tool_calls"]
+                if isinstance(call, dict)
             ]
             content = f"[tool calls: {', '.join(names)}]\n{content}"
         if len(content) > 400:
@@ -530,9 +536,9 @@ def cmd_tools() -> int:
 
 
 def cmd_providers() -> int:
-    table = Table(title="LLM providers", border_style="cyan", header_style="dim")
+    table = Table(title="LLM providers", border_style="cyan", header_style="dim", collapse_padding=True)
     table.add_column("Provider", style="bold", no_wrap=True)
-    table.add_column("Default model", overflow="fold")
+    table.add_column("Default model", no_wrap=True)
     table.add_column("API key", no_wrap=True)
     table.add_column("Status", no_wrap=True)
 

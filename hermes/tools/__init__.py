@@ -252,6 +252,10 @@ def build_registry(
     )
 
     def update_plan(steps: list[str], note: str = "") -> str:
+        if isinstance(steps, str):
+            steps = [steps]
+        if not isinstance(steps, list):
+            return "Error: steps must be a list of strings."
         cleaned = [str(step).strip() for step in steps if str(step).strip()]
         if not cleaned:
             return "Error: plan must contain at least one step."

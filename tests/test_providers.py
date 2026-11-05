@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from hermes.config import Settings
+from hermes.config import ConfigError, Settings
 from hermes.providers.anthropic import AnthropicProvider, convert_messages
 from hermes.providers.base import MissingAPIKey
 from hermes.providers.factory import create_provider, resolve_model, resolve_spec
@@ -147,7 +147,7 @@ def test_factory_ollama_needs_no_key(monkeypatch, tmp_path):
 
 def test_factory_unknown_provider(tmp_path):
     settings = Settings(provider="no-such-provider", workdir=tmp_path)
-    with pytest.raises(MissingAPIKey):
+    with pytest.raises(ConfigError):
         create_provider(settings)
 
 

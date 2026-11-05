@@ -153,7 +153,7 @@ def kv_table(title: str, rows: list[tuple[str, str]]) -> None:
     table.add_column("Key", style="dim", no_wrap=True)
     table.add_column("Value")
     for key, value in rows:
-        table.add_row(key, value)
+        table.add_row(key, Text(str(value)))
     console.print(table)
 
 

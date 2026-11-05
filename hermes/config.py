@@ -173,11 +173,19 @@ def load_settings(
             0.0,
             2.0,
         )
+    else:
+        resolved_temperature = _as_float(
+            resolved_temperature, DEFAULT_CONFIG["temperature"], 0.0, 2.0
+        )
     resolved_max_steps = max_steps
     if resolved_max_steps is None:
         resolved_max_steps = _as_int(
             env_max_steps if env_max_steps is not None else data.get("max_steps"),
             DEFAULT_CONFIG["max_steps"],
+        )
+    else:
+        resolved_max_steps = _as_int(
+            resolved_max_steps, DEFAULT_CONFIG["max_steps"], minimum=1
         )
     resolved_max_history = max_history
     if resolved_max_history is None:
@@ -185,6 +193,10 @@ def load_settings(
             env_max_history if env_max_history is not None else data.get("max_history"),
             DEFAULT_CONFIG["max_history"],
             minimum=8,
+        )
+    else:
+        resolved_max_history = _as_int(
+            resolved_max_history, DEFAULT_CONFIG["max_history"], minimum=8
         )
     resolved_auto = auto_approve
     if resolved_auto is None:
@@ -228,8 +240,8 @@ def init_app(force: bool = False) -> list[str]:
         )
         messages.append(f"Created config: {CONFIG_FILE}")
 
-    if ENV_FILE.exists() and not force:
-        messages.append(f"Env file already exists: {ENV_FILE}")
+    if ENV_FILE.exists():
+        messages.append(f"Env file already exists (left unchanged): {ENV_FILE}")
     else:
         ENV_FILE.write_text(_ENV_TEMPLATE, encoding="utf-8")
         messages.append(f"Created env template: {ENV_FILE}")

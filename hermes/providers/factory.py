@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from ..config import Settings
+from ..config import ConfigError, Settings
 from . import PROVIDERS, ProviderSpec
 from .anthropic import AnthropicProvider
 from .base import BaseProvider, MissingAPIKey
@@ -15,7 +15,7 @@ def resolve_spec(settings: Settings) -> ProviderSpec:
     provider = (settings.provider or "openai").lower().strip()
     if provider not in PROVIDERS:
         available = ", ".join(PROVIDERS)
-        raise MissingAPIKey(
+        raise ConfigError(
             f"Unknown provider '{settings.provider}'. Available providers: {available}"
         )
     return PROVIDERS[provider]

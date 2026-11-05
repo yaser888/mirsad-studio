@@ -35,6 +35,7 @@ class OpenAICompatibleProvider(BaseProvider):
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
+            "stream": False,
         }
         if tools:
             payload["tools"] = tools

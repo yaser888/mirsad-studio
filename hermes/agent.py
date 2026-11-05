@@ -93,6 +93,7 @@ class Agent:
 
             return self._finish_after_step_limit()
         except BaseException:
+            self._close_pending_tool_calls()
             self._save()
             raise
 
@@ -195,6 +196,40 @@ class Agent:
         self._save()
         ui.plan(self.plan, note)
         return f"Plan updated with {len(self.plan)} step(s)."
+
+    def _close_pending_tool_calls(self) -> None:
+        """Add synthetic results so an interrupted turn remains valid history."""
+
+        assistant_index: int | None = None
+        for index in range(len(self.session.messages) - 1, -1, -1):
+            message = self.session.messages[index]
+            if message.get("role") == "assistant" and message.get("tool_calls"):
+                assistant_index = index
+                break
+        if assistant_index is None:
+            return
+
+        pending: dict[str, str] = {}
+        for call in self.session.messages[assistant_index].get("tool_calls") or []:
+            call_id = str(call.get("id") or "")
+            function = call.get("function") or {}
+            name = str(function.get("name") or "")
+            if call_id:
+                pending[call_id] = name
+
+        for message in self.session.messages[assistant_index + 1 :]:
+            if message.get("role") == "tool":
+                pending.pop(str(message.get("tool_call_id") or ""), None)
+
+        for call_id, name in pending.items():
+            self.session.messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "name": name,
+                    "content": "Tool execution was interrupted before it completed.",
+                }
+            )
 
     def _approve(self, tool: Tool, arguments: dict[str, Any]) -> bool:
         if self.settings.auto_approve:

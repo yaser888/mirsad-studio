@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import locale
 import platform
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -36,18 +38,26 @@ BINARY_SUFFIXES = {
     ".avi", ".woff", ".woff2", ".ttf", ".otf", ".sqlite", ".db",
 }
 
+_ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
 # Commands that are refused regardless of approval. These target destructive
 # system-wide operations, not ordinary project work.
 _DANGEROUS_PATTERNS = [
-    re.compile(r"\brm\s+(-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r)\s+(/|~|\$home)(\s|$)", re.IGNORECASE),
+    re.compile(
+        r"\brm\s+(-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r)\s+"
+        r"(?:[a-z]:\\[^\s]*|/|~|\$home)(?:\s|$)",
+        re.IGNORECASE,
+    ),
     re.compile(r"\brm\s+-rf\s+--no-preserve-root\b", re.IGNORECASE),
     re.compile(r"\bmkfs(\.[a-z0-9]+)?\b", re.IGNORECASE),
     re.compile(r"\bformat\s+[a-z]:", re.IGNORECASE),
-    re.compile(r"\bdiskpart\b", re.IGNORECASE),
+    re.compile(
+        r"\b(diskpart|clear-disk|initialize-disk|format-volume)\b", re.IGNORECASE
+    ),
     re.compile(r"\b(shutdown|reboot|halt|poweroff)\b", re.IGNORECASE),
-    re.compile(r"\bremove-item\b[^\n]*\b-recurse\b[^\n]*([a-z]:\\(?:\s|$)|\s/\s*$)", re.IGNORECASE),
-    re.compile(r"\bdel\s+/[fsq]\b[^\n]*[a-z]:\\(?:\s|$)", re.IGNORECASE),
-    re.compile(r"\brd\s+/s\s+/q\s+[a-z]:\\?(?:\s|$)", re.IGNORECASE),
+    re.compile(r"\bremove-item\b[^\n]*\b-recurse\b[^\n]*[a-z]:\\", re.IGNORECASE),
+    re.compile(r"\bdel\s+/[fsq]\b[^\n]*[a-z]:\\", re.IGNORECASE),
+    re.compile(r"\b(rd|rmdir)\s+/s\s+/q\s+[a-z]:\\", re.IGNORECASE),
     re.compile(r"\bdd\s+if=.*\bof=/dev/(sd|nvme|hd)", re.IGNORECASE),
     re.compile(r":\(\)\s*\{\s*:\|:&\s*\};:", re.IGNORECASE),
 ]
@@ -79,8 +89,24 @@ def _resolve(workdir: Path, raw: str) -> Path:
 
 
 def _read_text(path: Path) -> str:
-    with path.open("r", encoding="utf-8", errors="replace", newline="") as handle:
-        return handle.read()
+    data = path.read_bytes()
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return data.decode("utf-16", errors="replace")
+    if data.startswith(b"\xef\xbb\xbf"):
+        return data.decode("utf-8-sig", errors="replace")
+
+    candidates = ["utf-8", locale.getpreferredencoding(False), "cp1256", "cp720"]
+    seen: set[str] = set()
+    for encoding in candidates:
+        key = (encoding or "").lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        try:
+            return data.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return data.decode("utf-8", errors="replace")
 
 
 def _write_text(path: Path, content: str) -> None:
@@ -127,6 +153,8 @@ def read_file(
     if end <= 0:
         end = start + MAX_READ_LINES - 1
     else:
+        if end < start:
+            return f"Error: end_line ({end}) is before start_line ({start})."
         end = min(end, start + MAX_READ_LINES - 1)
     end = min(end, total)
 
@@ -154,11 +182,18 @@ def edit_file(workdir: Path, path: str, old_string: str, new_string: str) -> str
     target = _resolve(workdir, path)
     if not target.is_file():
         raise ToolError(f"File not found: {path}")
+    if not old_string:
+        raise ToolError("old_string must not be empty.")
     if old_string == new_string:
         raise ToolError("old_string and new_string are identical; nothing to change.")
 
     text = _read_text(target)
-    occurrences = text.count(old_string)
+    uses_crlf = "\r\n" in text
+    working = text.replace("\r\n", "\n").replace("\r", "\n")
+    old_normalized = old_string.replace("\r\n", "\n").replace("\r", "\n")
+    new_normalized = new_string.replace("\r\n", "\n").replace("\r", "\n")
+
+    occurrences = working.count(old_normalized)
     if occurrences == 0:
         raise ToolError(
             "old_string was not found. Read the file again and copy the exact text, "
@@ -170,9 +205,11 @@ def edit_file(workdir: Path, path: str, old_string: str, new_string: str) -> str
             "the edit is unambiguous."
         )
 
-    updated = text.replace(old_string, new_string, 1)
+    updated = working.replace(old_normalized, new_normalized, 1)
+    if uses_crlf:
+        updated = updated.replace("\n", "\r\n")
     _write_text(target, updated)
-    line_number = text[: text.index(old_string)].count("\n") + 1
+    line_number = working[: working.index(old_normalized)].count("\n") + 1
     return f"Edited {target.relative_to(Path(workdir).resolve())} at line {line_number}."
 
 
@@ -294,8 +331,9 @@ def run_command(workdir: Path, command: str, timeout: int = 60) -> str:
         timeout_seconds = 60
 
     if platform.system() == "Windows":
+        shell = shutil.which("pwsh") or shutil.which("powershell") or "powershell"
         argv = [
-            "powershell",
+            shell,
             "-NoLogo",
             "-NoProfile",
             "-NonInteractive",
@@ -311,9 +349,6 @@ def run_command(workdir: Path, command: str, timeout: int = 60) -> str:
             cwd=str(workdir),
             check=False,
             capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
             timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
@@ -327,25 +362,74 @@ def run_command(workdir: Path, command: str, timeout: int = 60) -> str:
     except OSError as exc:
         raise ToolError(f"Could not run command: {exc}") from exc
 
+    stdout = _decode_output(completed.stdout)
+    stderr = _decode_output(completed.stderr)
+    stdout = _ANSI_RE.sub("", stdout)
+    stderr = _ANSI_RE.sub("", stderr)
     parts: list[str] = []
-    if completed.stdout.strip():
-        parts.append(completed.stdout.rstrip())
-    if completed.stderr.strip():
-        parts.append("[stderr]\n" + completed.stderr.rstrip())
+    if stdout.strip():
+        parts.append(stdout.rstrip())
+    if stderr.strip():
+        parts.append("[stderr]\n" + stderr.rstrip())
     if not parts:
         parts.append("(no output)")
     body = "\n".join(parts)
     return _truncate(f"Exit code: {completed.returncode}\n{body}")
 
 
+def _decode_output(data: bytes | str | None) -> str:
+    """Decode captured output using the most likely encoding.
+
+    Windows PowerShell may emit UTF-8, the system ANSI code page, or the OEM
+    code page depending on version and console settings.
+    """
+
+    if not data:
+        return ""
+    if isinstance(data, str):
+        return data
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return data.decode("utf-16", errors="replace")
+
+    candidates = ["utf-8", _console_encoding()]
+    if platform.system() == "Windows":
+        candidates.extend([locale.getpreferredencoding(False), "cp720", "cp1256", "cp850"])
+    else:
+        candidates.append(locale.getpreferredencoding(False))
+    seen: set[str] = set()
+    for encoding in candidates:
+        key = (encoding or "").lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        try:
+            return data.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
+def _console_encoding() -> str | None:
+    """Return the Windows console output code page, if available."""
+
+    if platform.system() != "Windows":
+        return None
+    try:
+        import ctypes
+
+        code_page = ctypes.windll.kernel32.GetConsoleOutputCP()
+        return f"cp{code_page}" if code_page else None
+    except Exception:  # noqa: BLE001 - encoding is best-effort
+        return None
+
+
 def _decode_timeout_output(exc: subprocess.TimeoutExpired) -> str:
     chunks: list[str] = []
     for value in (exc.stdout, exc.stderr):
-        if isinstance(value, bytes):
-            chunks.append(value.decode("utf-8", errors="replace"))
-        elif value:
-            chunks.append(str(value))
-    return "\n".join(chunk.strip() for chunk in chunks if chunk.strip())
+        decoded = _ANSI_RE.sub("", _decode_output(value))
+        if decoded.strip():
+            chunks.append(decoded.strip())
+    return "\n".join(chunks)
 
 
 def _human_size(size: int) -> str:

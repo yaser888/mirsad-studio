@@ -82,6 +82,49 @@ def test_command_runs_and_blocks_destructive(tmp_path):
     )
     assert "Blocked" in blocked
 
+    blocked_windows = registry.execute(
+        "run_command",
+        {"command": r"rd /s /q C:\Users"},
+        approve=_allow,
+    )
+    assert "Blocked" in blocked_windows
+
+
+def test_command_handles_arabic_output(tmp_path):
+    registry = build_registry(tmp_path)
+    result = registry.execute(
+        "run_command", {"command": "echo مرحبا"}, approve=_allow
+    )
+    assert "مرحبا" in result
+
+
+def test_read_file_handles_cp1256(tmp_path):
+    (tmp_path / "arabic.txt").write_bytes("مرحبا بالعالم".encode("cp1256"))
+    registry = build_registry(tmp_path)
+
+    result = registry.execute("read_file", {"path": "arabic.txt"})
+
+    assert "مرحبا بالعالم" in result
+
+
+def test_edit_file_handles_crlf(tmp_path):
+    path = tmp_path / "crlf.txt"
+    path.write_bytes(b"line one\r\nline two\r\n")
+    registry = build_registry(tmp_path)
+
+    result = registry.execute(
+        "edit_file",
+        {
+            "path": "crlf.txt",
+            "old_string": "line one\nline two",
+            "new_string": "line one\nline three",
+        },
+        approve=_allow,
+    )
+
+    assert "Edited" in result
+    assert path.read_bytes() == b"line one\r\nline three\r\n"
+
 
 def test_unknown_tool_and_arguments(tmp_path):
     registry = build_registry(tmp_path)

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from hermes.agent import Agent
 from hermes.config import Settings
 from hermes.memory import SessionStore
@@ -160,3 +162,45 @@ def test_agent_denies_unapproved_write(tmp_path):
         message for message in session.messages if message["role"] == "tool"
     )
     assert "denied" in tool_message["content"].lower()
+
+
+def test_agent_closes_tool_calls_on_interrupt(tmp_path):
+    provider = FakeProvider(
+        [
+            AssistantTurn(
+                tool_calls=[
+                    ToolCall(
+                        id="call_write",
+                        name="write_file",
+                        arguments={"path": "x.txt", "content": "x"},
+                    )
+                ]
+            )
+        ]
+    )
+    store = SessionStore(tmp_path / "sessions")
+    session = store.new("openai", "fake-1", tmp_path)
+    store.save(session)
+
+    def interrupt(tool, arguments):
+        raise KeyboardInterrupt
+
+    agent = Agent(
+        settings=_settings(tmp_path, auto_approve=False),
+        provider=provider,
+        session=session,
+        store=store,
+        approval=interrupt,
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        agent.run_turn("Write a file")
+
+    assert [message["role"] for message in session.messages] == [
+        "user",
+        "assistant",
+        "tool",
+    ]
+    assert "interrupted" in session.messages[-1]["content"].lower()
+    reloaded = store.load(session.id)
+    assert reloaded.messages[-1]["role"] == "tool"

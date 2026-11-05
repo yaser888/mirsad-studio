@@ -89,6 +89,22 @@ def test_init_app_creates_templates(tmp_path, monkeypatch):
     assert any("already exists" in message for message in messages)
 
 
+def test_init_force_never_wipes_env_keys(tmp_path, monkeypatch):
+    app = tmp_path / "app"
+    monkeypatch.setattr(config, "APP_DIR", app)
+    monkeypatch.setattr(config, "CONFIG_FILE", app / "config.json")
+    monkeypatch.setattr(config, "ENV_FILE", app / ".env")
+    monkeypatch.setattr(config, "SESSIONS_DIR", app / "sessions")
+
+    config.init_app()
+    env_file = app / ".env"
+    env_file.write_text("OPENAI_API_KEY=super-secret\n", encoding="utf-8")
+
+    config.init_app(force=True)
+
+    assert env_file.read_text(encoding="utf-8") == "OPENAI_API_KEY=super-secret\n"
+
+
 def test_invalid_workdir():
     with pytest.raises(config.ConfigError):
         load_settings(workdir=Path("definitely-not-a-real-directory-xyz"))
