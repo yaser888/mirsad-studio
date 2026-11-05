@@ -56,7 +56,7 @@ class Agent:
 
         try:
             for step in range(1, self.settings.max_steps + 1):
-                with ui.thinking(f"Hermes is thinking - step {step}/{self.settings.max_steps}"):
+                with ui.thinking(f"Mirsad is thinking - step {step}/{self.settings.max_steps}"):
                     turn = self.provider.chat(
                         self._build_messages(),
                         tools=self.registry.specs(),

@@ -1,4 +1,4 @@
-"""Command-line interface for Hermes Agent."""
+"""Command-line interface for Mirsad Agent."""
 
 from __future__ import annotations
 
@@ -38,21 +38,21 @@ from .tools import build_registry
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="hermes",
-        description="Hermes Agent - a multi-step AI agent with tools, memory, and "
+        prog="mirsad",
+        description="Mirsad Agent - a multi-step AI agent with tools, memory, and "
         "multi-provider LLM support.",
         epilog=(
             "Examples:\n"
-            "  hermes init\n"
-            "  hermes chat\n"
-            "  hermes ask \"summarize this project and run its tests\"\n"
-            "  hermes chat --provider ollama --model qwen2.5:7b\n"
-            "  hermes sessions list\n"
+            "  mirsad init\n"
+            "  mirsad chat\n"
+            "  mirsad ask \"summarize this project and run its tests\"\n"
+            "  mirsad chat --provider ollama --model qwen2.5:7b\n"
+            "  mirsad sessions list\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--version", action="version", version=f"hermes-agent {__version__}"
+        "--version", action="version", version=f"mirsad-agent {__version__}"
     )
     subparsers = parser.add_subparsers(dest="command")
 
@@ -89,7 +89,7 @@ def build_parser() -> argparse.ArgumentParser:
     config = subparsers.add_parser("config", help="Show effective configuration.")
     config.set_defaults()
 
-    init = subparsers.add_parser("init", help="Create the Hermes config directory.")
+    init = subparsers.add_parser("init", help="Create the Mirsad config directory.")
     init.add_argument(
         "--force",
         action="store_true",
@@ -106,7 +106,7 @@ def _add_run_args(parser: argparse.ArgumentParser, with_session: bool) -> None:
         "--provider",
         choices=sorted(PROVIDERS),
         default=None,
-        help="LLM provider (default: config or HERMES_PROVIDER).",
+        help="LLM provider (default: config or MIRSAD_PROVIDER).",
     )
     parser.add_argument("-m", "--model", default=None, help="Model name override.")
     parser.add_argument(
@@ -129,7 +129,7 @@ def _add_run_args(parser: argparse.ArgumentParser, with_session: bool) -> None:
             "-s",
             "--session",
             default=None,
-            help="Resume an existing session ID (see: hermes sessions list).",
+            help="Resume an existing session ID (see: mirsad sessions list).",
         )
 
 
@@ -440,7 +440,7 @@ def cmd_sessions(args: argparse.Namespace) -> int:
     if command == "list":
         summaries = store.list()
         if not summaries:
-            ui.info("No saved sessions yet. Start one with: hermes chat")
+            ui.info("No saved sessions yet. Start one with: mirsad chat")
             return 0
         table = Table(
             title="Sessions", border_style="cyan", header_style="dim", expand=True
@@ -521,7 +521,7 @@ def cmd_sessions(args: argparse.Namespace) -> int:
 
 def cmd_tools() -> int:
     registry = build_registry(Path.cwd())
-    table = Table(title="Hermes tools", border_style="cyan", header_style="dim")
+    table = Table(title="Mirsad tools", border_style="cyan", header_style="dim")
     table.add_column("Tool", style="bold", no_wrap=True)
     table.add_column("Approval", no_wrap=True)
     table.add_column("Description", overflow="fold")
@@ -548,10 +548,10 @@ def cmd_providers() -> int:
             key_label = "not needed"
         elif configured:
             status = "ready"
-            key_label = spec.env_key or "HERMES_API_KEY"
+            key_label = spec.env_key or "MIRSAD_API_KEY"
         else:
             status = "missing key"
-            key_label = spec.env_key or "HERMES_API_KEY"
+            key_label = spec.env_key or "MIRSAD_API_KEY"
         table.add_row(spec.label, spec.default_model, key_label, status)
     ui.console.print(table)
     ui.info(f"Config: {CONFIG_FILE}")
@@ -584,12 +584,12 @@ def cmd_config() -> int:
         except ConfigError as exc:
             ui.error(str(exc))
     else:
-        ui.warn("No config.json yet. Run: hermes init")
+        ui.warn("No config.json yet. Run: mirsad init")
 
     if ENV_FILE.is_file():
         ui.info(f"Env file found: {ENV_FILE}")
     else:
-        ui.warn("No ~/.hermes/.env yet. Run: hermes init")
+        ui.warn("No ~/.mirsad/.env yet. Run: mirsad init")
 
     table = Table(title="API keys", border_style="cyan", header_style="dim")
     table.add_column("Provider")
@@ -618,10 +618,10 @@ def cmd_init(args: argparse.Namespace) -> int:
             Text(
                 f"Next steps:\n"
                 f"  1. Put your API key(s) in {ENV_FILE}\n"
-                f"  2. Run: hermes providers\n"
-                f"  3. Run: hermes chat\n\n"
+                f"  2. Run: mirsad providers\n"
+                f"  3. Run: mirsad chat\n\n"
                 f"Tip: for a local model, install Ollama and run:\n"
-                f"  hermes chat --provider ollama --model qwen2.5:7b"
+                f"  mirsad chat --provider ollama --model qwen2.5:7b"
             ),
             border_style="cyan",
             padding=(1, 2),

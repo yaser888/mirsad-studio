@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from hermes import config
-from hermes.config import load_dotenv, load_settings
+from mirsad import config
+from mirsad.config import load_dotenv, load_settings
 
 
 def test_load_dotenv_parses_and_does_not_override(tmp_path, monkeypatch):
@@ -45,10 +45,10 @@ def test_settings_precedence(tmp_path, monkeypatch):
         encoding="utf-8",
     )
     monkeypatch.setattr(config, "CONFIG_FILE", config_file)
-    monkeypatch.setenv("HERMES_PROVIDER", "groq")
-    monkeypatch.setenv("HERMES_MAX_STEPS", "7")
-    monkeypatch.delenv("HERMES_MODEL", raising=False)
-    monkeypatch.delenv("HERMES_AUTO_APPROVE", raising=False)
+    monkeypatch.setenv("MIRSAD_PROVIDER", "groq")
+    monkeypatch.setenv("MIRSAD_MAX_STEPS", "7")
+    monkeypatch.delenv("MIRSAD_MODEL", raising=False)
+    monkeypatch.delenv("MIRSAD_AUTO_APPROVE", raising=False)
 
     settings = load_settings(provider="ollama", workdir=tmp_path)
 
@@ -61,7 +61,7 @@ def test_settings_precedence(tmp_path, monkeypatch):
 
 def test_settings_explicit_max_steps(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "CONFIG_FILE", tmp_path / "missing.json")
-    monkeypatch.delenv("HERMES_MAX_STEPS", raising=False)
+    monkeypatch.delenv("MIRSAD_MAX_STEPS", raising=False)
 
     settings = load_settings(workdir=tmp_path, max_steps=9, auto_approve=True)
 

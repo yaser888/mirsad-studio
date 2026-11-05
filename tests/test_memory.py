@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from hermes.memory import SessionStore, context_messages
+from mirsad.memory import SessionStore, context_messages
 
 
 def test_session_roundtrip(tmp_path):

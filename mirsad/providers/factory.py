@@ -22,13 +22,13 @@ def resolve_spec(settings: Settings) -> ProviderSpec:
 
 
 def resolve_model(settings: Settings, spec: ProviderSpec) -> str:
-    return (settings.model or os.environ.get("HERMES_MODEL") or spec.default_model).strip()
+    return (settings.model or os.environ.get("MIRSAD_MODEL") or spec.default_model).strip()
 
 
 def provider_key(spec: ProviderSpec) -> str | None:
     """Return the API key for a provider, allowing a global override."""
 
-    return os.environ.get("HERMES_API_KEY") or (
+    return os.environ.get("MIRSAD_API_KEY") or (
         os.environ.get(spec.env_key) if spec.env_key else None
     )
 
@@ -41,13 +41,13 @@ def create_provider(settings: Settings) -> BaseProvider:
     api_key = provider_key(spec)
 
     if spec.requires_key and not api_key:
-        env_name = spec.env_key or "HERMES_API_KEY"
+        env_name = spec.env_key or "MIRSAD_API_KEY"
         raise MissingAPIKey(
             f"{spec.label} requires an API key. Set {env_name} in your "
-            "environment or in ~/.hermes/.env."
+            "environment or in ~/.mirsad/.env."
         )
 
-    base_url = os.environ.get("HERMES_BASE_URL") or spec.base_url
+    base_url = os.environ.get("MIRSAD_BASE_URL") or spec.base_url
     if spec.id == "ollama":
         base_url = os.environ.get("OLLAMA_BASE_URL") or base_url
 
@@ -61,8 +61,8 @@ def create_provider(settings: Settings) -> BaseProvider:
     extra_headers: dict[str, str] = {}
     if spec.id == "openrouter":
         extra_headers = {
-            "HTTP-Referer": "https://github.com/hermes-agent",
-            "X-Title": "Hermes Agent",
+            "HTTP-Referer": "https://github.com/mirsad-agent",
+            "X-Title": "Mirsad Agent",
         }
     return OpenAICompatibleProvider(
         name=spec.label,

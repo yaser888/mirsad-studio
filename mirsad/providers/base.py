@@ -99,7 +99,7 @@ class BaseProvider(ABC):
                     if response.status_code in {401, 403}:
                         hint = (
                             " Check that your API key is valid and exported in the "
-                            "environment (or in ~/.hermes/.env)."
+                            "environment (or in ~/.mirsad/.env)."
                         )
                     raise ProviderError(
                         f"{self.name}: API error {response.status_code}: {detail}.{hint}"

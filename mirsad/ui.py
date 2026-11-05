@@ -19,7 +19,7 @@ console = Console(highlight=False)
 
 
 def banner(provider: str, model: str, workdir: str, session_id: str) -> None:
-    title = Text("HERMES AGENT", style="bold cyan")
+    title = Text("MIRSAD AGENT", style="bold cyan")
     subtitle = Text(
         "multi-step AI agent  |  tools  |  persistent memory",
         style="dim",
@@ -136,7 +136,7 @@ def confirm_tool(name: str, arguments: dict[str, Any]) -> bool:
 
 
 @contextmanager
-def thinking(label: str = "Hermes is thinking") -> Iterator[None]:
+def thinking(label: str = "Mirsad is thinking") -> Iterator[None]:
     with console.status(f"[cyan]{label}...[/]", spinner="dots"):
         yield
 

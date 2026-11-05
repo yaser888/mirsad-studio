@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from hermes.agent import Agent
-from hermes.config import Settings
-from hermes.memory import SessionStore
-from hermes.providers.base import AssistantTurn, ToolCall
+from mirsad.agent import Agent
+from mirsad.config import Settings
+from mirsad.memory import SessionStore
+from mirsad.providers.base import AssistantTurn, ToolCall
 
 
 class FakeProvider:
@@ -58,7 +58,7 @@ def test_agent_runs_plan_write_and_finishes(tmp_path):
                     ToolCall(
                         id="call_write",
                         name="write_file",
-                        arguments={"path": "hello.txt", "content": "hello hermes\n"},
+                        arguments={"path": "hello.txt", "content": "hello mirsad\n"},
                     )
                 ],
             ),
@@ -78,7 +78,7 @@ def test_agent_runs_plan_write_and_finishes(tmp_path):
     answer = agent.run_turn("Create hello.txt")
 
     assert answer == "All done."
-    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "hello hermes\n"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "hello mirsad\n"
     assert agent.plan == ["Inspect", "Write file"]
     assert agent.session.plan == ["Inspect", "Write file"]
 

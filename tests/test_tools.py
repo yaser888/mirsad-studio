@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from hermes.tools import build_registry
+from mirsad.tools import build_registry
 
 
 def _allow(tool, arguments):
@@ -72,9 +72,9 @@ def test_command_runs_and_blocks_destructive(tmp_path):
     registry = build_registry(tmp_path)
 
     result = registry.execute(
-        "run_command", {"command": "echo hermes-ok"}, approve=_allow
+        "run_command", {"command": "echo mirsad-ok"}, approve=_allow
     )
-    assert "hermes-ok" in result
+    assert "mirsad-ok" in result
     assert "Exit code: 0" in result
 
     blocked = registry.execute(

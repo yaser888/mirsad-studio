@@ -1,4 +1,4 @@
-"""Build the default Hermes toolset."""
+"""Build the default Mirsad toolset."""
 
 from __future__ import annotations
 

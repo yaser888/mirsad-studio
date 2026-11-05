@@ -32,7 +32,7 @@ def build_system_prompt(
         )
     )
 
-    return f"""You are Hermes, a careful and capable autonomous agent working in the user's terminal.
+    return f"""You are Mirsad, a careful and capable autonomous agent working in the user's terminal.
 
 ## Environment
 - OS: {os_name} ({platform.release()})

@@ -3,13 +3,13 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hermes-agent"
+name = "mirsad-agent"
 version = "0.1.0"
-description = "Hermes Agent - a multi-step AI agent CLI with tools, persistent memory, and multi-provider LLM support."
+description = "Mirsad Agent - a multi-step AI agent CLI with tools, persistent memory, and multi-provider LLM support."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Hermes Agent" }]
+authors = [{ name = "Mirsad Agent" }]
 keywords = ["ai", "agent", "cli", "llm", "developer-tools"]
 dependencies = [
     "httpx>=0.27",
@@ -20,10 +20,10 @@ dependencies = [
 dev = ["pytest>=8.0"]
 
 [project.scripts]
-hermes = "hermes.cli:main"
+mirsad = "mirsad.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["hermes"]
+packages = ["mirsad"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

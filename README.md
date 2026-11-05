@@ -1,4 +1,4 @@
-# Hermes Agent
+# Mirsad Agent
 
 وكيل ذكاء اصطناعي متعدد الخطوات يعمل من الطرفية، مع أدوات تنفيذ حقيقية، ذاكرة جلسات دائمة، ودعم خمسة مزوّدي نماذج (OpenAI, Anthropic, OpenRouter, DeepSeek, Groq) بالإضافة إلى Ollama المحلي.
 
@@ -10,7 +10,7 @@ A multi-step AI agent CLI with real tools, persistent sessions, and multi-provid
 
 - **حلقة وكيل متعددة الخطوات**: يخطّط، ينفّذ الأدوات، يقرأ النتائج، ويعدّل خطته حتى إنجاز المهمة.
 - **أدوات حقيقية**: قراءة/كتابة/تعديل الملفات، البحث في الكود، تنفيذ أوامر PowerShell/bash، جلب صفحات الويب، والبحث في الويب.
-- **ذاكرة دائمة**: كل جلسة تُحفظ تلقائياً في `~/.hermes/sessions/` ويمكن استئنافها لاحقاً.
+- **ذاكرة دائمة**: كل جلسة تُحفظ تلقائياً في `~/.mirsad/sessions/` ويمكن استئنافها لاحقاً.
 - **عدة مزوّدين**: OpenAI وAnthropic وOpenRouter وDeepSeek وGroq وOllama المحلي — بتبديل فوري.
 - **حواجز أمان**: كل أمر shell أو كتابة ملف يتطلب موافقتك افتراضياً، مع حظر الأوامر المدمّرة للنظام.
 - **حدود واضحة**: سقف خطوات، تقليم سياق المحادثة، وحدود لحجم المخرجات.
@@ -29,13 +29,13 @@ A multi-step AI agent CLI with real tools, persistent sessions, and multi-provid
 ## التثبيت السريع (Windows)
 
 ```powershell
-cd C:\Users\سكواد\hermes-agent
+cd C:\Users\سكواد\mirsad-agent
 
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .
 
-hermes init
+mirsad init
 ```
 
 إذا منع PowerShell تنشيط البيئة:
@@ -47,13 +47,13 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 أو شغّل الأمر مباشرة دون تنشيط:
 
 ```powershell
-.\.venv\Scripts\hermes.exe init
+.\.venv\Scripts\mirsad.exe init
 ```
 
 ### إضافة مفاتيح API
 
 ```powershell
-notepad $HOME\.hermes\.env
+notepad $HOME\.mirsad\.env
 ```
 
 املأ المفتاح الذي ستستخدمه فقط:
@@ -74,14 +74,14 @@ GROQ_API_KEY=gsk_...
 
 ```powershell
 ollama pull qwen2.5:7b
-hermes chat --provider ollama --model qwen2.5:7b
+mirsad chat --provider ollama --model qwen2.5:7b
 ```
 
 ### التشغيل دون تثبيت
 
 ```powershell
 pip install httpx rich
-python -m hermes
+python -m mirsad
 ```
 
 ---
@@ -89,26 +89,26 @@ python -m hermes
 ## الاستخدام
 
 ```powershell
-hermes init                         # إنشاء مجلد الإعدادات
-hermes chat                         # جلسة تفاعلية جديدة
-hermes chat -s 20261105-153045-a1b2 # استئناف جلسة
-hermes ask "افحص هذا المشروع وشغّل الاختبارات"
-hermes ask "كم عدد ملفات Python؟" --quiet
-hermes sessions list
-hermes sessions show <id>
-hermes tools
-hermes providers
-hermes config
+mirsad init                         # إنشاء مجلد الإعدادات
+mirsad chat                         # جلسة تفاعلية جديدة
+mirsad chat -s 20261105-153045-a1b2 # استئناف جلسة
+mirsad ask "افحص هذا المشروع وشغّل الاختبارات"
+mirsad ask "كم عدد ملفات Python؟" --quiet
+mirsad sessions list
+mirsad sessions show <id>
+mirsad tools
+mirsad providers
+mirsad config
 ```
 
 ### جلسة تفاعلية
 
 ```
-$ hermes chat
+$ mirsad chat
 
-HERMES AGENT
+MIRSAD AGENT
 provider  openai / gpt-4o-mini
-workspace C:\Users\سكواد\hermes-agent
+workspace C:\Users\سكواد\mirsad-agent
 session   20261105-153045-a1b2
 
 You › أضف ملف README وقم بتشغيل الاختبارات
@@ -146,11 +146,11 @@ You › أضف ملف README وقم بتشغيل الاختبارات
 اختر مزوّداً افتراضياً:
 
 ```powershell
-hermes chat --provider deepseek
-$env:HERMES_PROVIDER = "openai"
+mirsad chat --provider deepseek
+$env:MIRSAD_PROVIDER = "openai"
 ```
 
-يمكن تجاوز عنوان الـ API عبر `HERMES_BASE_URL`، ومفتاح عام عبر `HERMES_API_KEY` (مفيد لخدمات متوافقة مع OpenAI).
+يمكن تجاوز عنوان الـ API عبر `MIRSAD_BASE_URL`، ومفتاح عام عبر `MIRSAD_API_KEY` (مفيد لخدمات متوافقة مع OpenAI).
 
 ---
 
@@ -175,7 +175,7 @@ $env:HERMES_PROVIDER = "openai"
 ### إعداد البحث في الويب
 
 - افتراضياً يستخدم **DuckDuckGo** دون مفتاح.
-- للحصول على نتائج أكثر موثوقية، ضع مفتاح Tavily في `~/.hermes/.env`:
+- للحصول على نتائج أكثر موثوقية، ضع مفتاح Tavily في `~/.mirsad/.env`:
 
 ```dotenv
 TAVILY_API_KEY=tvly-...
@@ -185,7 +185,7 @@ TAVILY_API_KEY=tvly-...
 
 ## الإعدادات
 
-ملف الإعدادات: `~/.hermes/config.json`
+ملف الإعدادات: `~/.mirsad/config.json`
 
 ```json
 {
@@ -204,12 +204,12 @@ TAVILY_API_KEY=tvly-...
 متغيرات البيئة المدعومة:
 
 ```
-HERMES_PROVIDER, HERMES_MODEL, HERMES_TEMPERATURE, HERMES_MAX_STEPS,
-HERMES_MAX_HISTORY, HERMES_AUTO_APPROVE, HERMES_BASE_URL, HERMES_API_KEY,
-HERMES_HOME, OLLAMA_BASE_URL, TAVILY_API_KEY
+MIRSAD_PROVIDER, MIRSAD_MODEL, MIRSAD_TEMPERATURE, MIRSAD_MAX_STEPS,
+MIRSAD_MAX_HISTORY, MIRSAD_AUTO_APPROVE, MIRSAD_BASE_URL, MIRSAD_API_KEY,
+MIRSAD_HOME, OLLAMA_BASE_URL, TAVILY_API_KEY
 ```
 
-`HERMES_HOME` يغيّر مجلد الإعدادات والجلسات (افتراضياً `~/.hermes`).
+`MIRSAD_HOME` يغيّر مجلد الإعدادات والجلسات (افتراضياً `~/.mirsad`).
 
 ---
 
@@ -228,9 +228,9 @@ HERMES_HOME, OLLAMA_BASE_URL, TAVILY_API_KEY
 ## هيكل المشروع
 
 ```
-hermes-agent/
-├── hermes/
-│   ├── __main__.py          # python -m hermes
+mirsad-agent/
+├── mirsad/
+│   ├── __main__.py          # python -m mirsad
 │   ├── cli.py               # أوامر CLI والجلسة التفاعلية
 │   ├── agent.py             # حلقة plan → act → observe
 │   ├── config.py            # الإعدادات و.env
@@ -268,12 +268,12 @@ pytest
 ## استكشاف الأخطاء
 
 **`MissingAPIKey` أو خطأ 401**
-- تأكد من وجود المفتاح في `~/.hermes/.env` أو متغيرات البيئة.
-- شغّل `hermes providers` للتأكد من الحالة.
+- تأكد من وجود المفتاح في `~/.mirsad/.env` أو متغيرات البيئة.
+- شغّل `mirsad providers` للتأكد من الحالة.
 
 **Ollama لا يعمل**
 - تأكد أن Ollama يعمل: `ollama list`
-- ثم: `hermes chat -p ollama -m qwen2.5:7b`
+- ثم: `mirsad chat -p ollama -m qwen2.5:7b`
 
 **الموافقة لا تظهر / الطرفية غير تفاعلية**
 - استخدم `-y` للسماح التلقائي، أو شغّل من طرفية حقيقية.

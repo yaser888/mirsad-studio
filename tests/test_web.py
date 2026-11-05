@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from hermes.tools.web import (
+from mirsad.tools.web import (
     WebError,
     _clean_ddg_url,
     _html_to_text,

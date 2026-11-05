@@ -5,7 +5,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import ClassVar
 
-from hermes import cli
+from mirsad import cli
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -68,7 +68,7 @@ def test_cli_end_to_end_with_local_openai_server(tmp_path, monkeypatch, capsys):
     thread.start()
     try:
         port = server.server_address[1]
-        monkeypatch.setenv("HERMES_BASE_URL", f"http://127.0.0.1:{port}/v1")
+        monkeypatch.setenv("MIRSAD_BASE_URL", f"http://127.0.0.1:{port}/v1")
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
         monkeypatch.setattr(cli, "SESSIONS_DIR", tmp_path / "sessions")
         monkeypatch.setattr(cli, "bootstrap_env", lambda: None)

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 
-from hermes import cli
-from hermes.config import Settings
-from hermes.providers.base import AssistantTurn
+from mirsad import cli
+from mirsad.config import Settings
+from mirsad.providers.base import AssistantTurn
 
 
 class FakeProvider:

@@ -13,7 +13,7 @@ class ConfigError(RuntimeError):
     """Raised for invalid configuration."""
 
 
-APP_DIR = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")).expanduser()
+APP_DIR = Path(os.environ.get("MIRSAD_HOME", Path.home() / ".mirsad")).expanduser()
 CONFIG_FILE = APP_DIR / "config.json"
 ENV_FILE = APP_DIR / ".env"
 SESSIONS_DIR = APP_DIR / "sessions"
@@ -28,7 +28,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 _ENV_TEMPLATE = """\
-# Hermes Agent environment - keep this file private.
+# Mirsad Agent environment - keep this file private.
 # Fill in the API key(s) for the provider(s) you use.
 
 OPENAI_API_KEY=
@@ -41,12 +41,12 @@ GROQ_API_KEY=
 # OLLAMA_BASE_URL=http://localhost:11434/v1
 
 # Defaults
-# HERMES_PROVIDER=openai
-# HERMES_MODEL=gpt-4o-mini
-# HERMES_TEMPERATURE=0.2
-# HERMES_MAX_STEPS=12
-# HERMES_MAX_HISTORY=80
-# HERMES_AUTO_APPROVE=false
+# MIRSAD_PROVIDER=openai
+# MIRSAD_MODEL=gpt-4o-mini
+# MIRSAD_TEMPERATURE=0.2
+# MIRSAD_MAX_STEPS=12
+# MIRSAD_MAX_HISTORY=80
+# MIRSAD_AUTO_APPROVE=false
 
 # Optional web search provider (DuckDuckGo is used when empty)
 # TAVILY_API_KEY=
@@ -64,7 +64,7 @@ class Settings:
     workdir: Path = field(default_factory=Path.cwd)
 
     def effective_model(self, default: str) -> str:
-        return (self.model or os.environ.get("HERMES_MODEL") or default).strip()
+        return (self.model or os.environ.get("MIRSAD_MODEL") or default).strip()
 
 
 def load_dotenv(path: Path) -> None:
@@ -94,7 +94,7 @@ def load_dotenv(path: Path) -> None:
 
 
 def bootstrap_env(cwd: Path | None = None) -> None:
-    """Load project .env first, then the user-level ~/.hermes/.env."""
+    """Load project .env first, then the user-level ~/.mirsad/.env."""
 
     candidates = [Path(cwd or Path.cwd()) / ".env", ENV_FILE]
     for path in candidates:
@@ -154,12 +154,12 @@ def load_settings(
 
     data = read_config_file()
 
-    env_provider = os.environ.get("HERMES_PROVIDER")
-    env_model = os.environ.get("HERMES_MODEL")
-    env_temperature = os.environ.get("HERMES_TEMPERATURE")
-    env_max_steps = os.environ.get("HERMES_MAX_STEPS")
-    env_max_history = os.environ.get("HERMES_MAX_HISTORY")
-    env_auto = os.environ.get("HERMES_AUTO_APPROVE")
+    env_provider = os.environ.get("MIRSAD_PROVIDER")
+    env_model = os.environ.get("MIRSAD_MODEL")
+    env_temperature = os.environ.get("MIRSAD_TEMPERATURE")
+    env_max_steps = os.environ.get("MIRSAD_MAX_STEPS")
+    env_max_history = os.environ.get("MIRSAD_MAX_HISTORY")
+    env_auto = os.environ.get("MIRSAD_AUTO_APPROVE")
 
     resolved_provider = (
         provider or env_provider or data.get("provider") or DEFAULT_CONFIG["provider"]

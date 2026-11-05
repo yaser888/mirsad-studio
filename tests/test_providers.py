@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from hermes.config import ConfigError, Settings
-from hermes.providers.anthropic import AnthropicProvider, convert_messages
-from hermes.providers.base import MissingAPIKey
-from hermes.providers.factory import create_provider, resolve_model, resolve_spec
-from hermes.providers.openai_compat import OpenAICompatibleProvider
+from mirsad.config import ConfigError, Settings
+from mirsad.providers.anthropic import AnthropicProvider, convert_messages
+from mirsad.providers.base import MissingAPIKey
+from mirsad.providers.factory import create_provider, resolve_model, resolve_spec
+from mirsad.providers.openai_compat import OpenAICompatibleProvider
 
 
 def test_openai_parse_tool_calls():
@@ -125,7 +125,7 @@ def test_factory_requires_key(monkeypatch, tmp_path):
         "OPENROUTER_API_KEY",
         "DEEPSEEK_API_KEY",
         "GROQ_API_KEY",
-        "HERMES_API_KEY",
+        "MIRSAD_API_KEY",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -135,8 +135,8 @@ def test_factory_requires_key(monkeypatch, tmp_path):
 
 
 def test_factory_ollama_needs_no_key(monkeypatch, tmp_path):
-    monkeypatch.delenv("HERMES_API_KEY", raising=False)
-    monkeypatch.delenv("HERMES_BASE_URL", raising=False)
+    monkeypatch.delenv("MIRSAD_API_KEY", raising=False)
+    monkeypatch.delenv("MIRSAD_BASE_URL", raising=False)
     settings = Settings(provider="ollama", workdir=tmp_path, model="qwen-test")
 
     provider = create_provider(settings)
@@ -152,7 +152,7 @@ def test_factory_unknown_provider(tmp_path):
 
 
 def test_resolve_default_model(monkeypatch):
-    monkeypatch.delenv("HERMES_MODEL", raising=False)
+    monkeypatch.delenv("MIRSAD_MODEL", raising=False)
     settings = Settings(provider="deepseek")
     spec = resolve_spec(settings)
     assert resolve_model(settings, spec) == "deepseek-chat"
