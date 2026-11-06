@@ -17,6 +17,8 @@ APP_DIR = Path(os.environ.get("MIRSAD_HOME", Path.home() / ".mirsad")).expanduse
 CONFIG_FILE = APP_DIR / "config.json"
 ENV_FILE = APP_DIR / ".env"
 SESSIONS_DIR = APP_DIR / "sessions"
+VAULT_FILE = APP_DIR / "vault.dat"
+AUDIT_FILE = APP_DIR / "audit.jsonl"
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "provider": "openai",
@@ -99,6 +101,15 @@ def bootstrap_env(cwd: Path | None = None) -> None:
     candidates = [Path(cwd or Path.cwd()) / ".env", ENV_FILE]
     for path in candidates:
         load_dotenv(path)
+
+    # Keys saved in Mirsad Studio's DPAPI vault are used only when the
+    # environment (or the .env file) does not already provide them.
+    try:
+        from .security.vault import SecretVault
+
+        SecretVault(VAULT_FILE).apply_to_env()
+    except Exception:  # noqa: BLE001 - vault is optional on non-Windows
+        pass
 
 
 def read_config_file() -> dict[str, Any]:
@@ -222,6 +233,41 @@ def load_settings(
     )
 
 
+def write_config(data: dict[str, Any]) -> None:
+    """Atomically merge *data* into the user config file."""
+
+    current = read_config_file()
+    current.update(data)
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp = CONFIG_FILE.with_suffix(CONFIG_FILE.suffix + ".tmp")
+    temp.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
+    os.replace(temp, CONFIG_FILE)
+    _restrict_directory(CONFIG_FILE.parent)
+
+
+def save_settings(settings: Settings) -> None:
+    write_config(
+        {
+            "provider": settings.provider,
+            "model": settings.model,
+            "temperature": settings.temperature,
+            "max_steps": settings.max_steps,
+            "max_history": settings.max_history,
+            "auto_approve": settings.auto_approve,
+            "workdir": str(settings.workdir),
+        }
+    )
+
+
+def _restrict_directory(path: Path) -> None:
+    if os.name == "nt":
+        return
+    try:
+        path.chmod(0o700)
+    except OSError:
+        pass
+
+
 def init_app(force: bool = False) -> list[str]:
     """Create the app directory, config template, and env template.
 
@@ -231,6 +277,7 @@ def init_app(force: bool = False) -> list[str]:
     messages: list[str] = []
     APP_DIR.mkdir(parents=True, exist_ok=True)
     SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    _restrict_directory(APP_DIR)
 
     if CONFIG_FILE.exists() and not force:
         messages.append(f"Config already exists: {CONFIG_FILE}")

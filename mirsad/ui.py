@@ -15,6 +15,8 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from rich.text import Text
 
+from .events import AgentEvents
+
 console = Console(highlight=False)
 
 
@@ -34,9 +36,7 @@ def banner(provider: str, model: str, workdir: str, session_id: str) -> None:
 
     body = Text.assemble(title, "\n", subtitle, details)
     console.print(Panel(body, border_style="cyan", padding=(1, 2)))
-    console.print(
-        Text("Type /help for commands, /exit to quit.\n", style="dim")
-    )
+    console.print(Text("Type /help for commands, /exit to quit.\n", style="dim"))
 
 
 def info(message: str) -> None:
@@ -81,7 +81,11 @@ def tool_result(name: str, result: str) -> None:
     result = result or "(empty)"
     is_error = result.lstrip().lower().startswith(("error", "blocked"))
     style = "red" if is_error else "green"
-    preview = result if len(result) <= 2500 else result[:2500] + "\n... [output shortened in UI]"
+    preview = (
+        result
+        if len(result) <= 2500
+        else result[:2500] + "\n... [output shortened in UI]"
+    )
     console.print(
         Panel(
             Text(preview),
@@ -149,7 +153,9 @@ def user_prompt() -> str:
 
 
 def kv_table(title: str, rows: list[tuple[str, str]]) -> None:
-    table = Table(title=title, title_style="bold cyan", show_header=False, border_style="cyan")
+    table = Table(
+        title=title, title_style="bold cyan", show_header=False, border_style="cyan"
+    )
     table.add_column("Key", style="dim", no_wrap=True)
     table.add_column("Value")
     for key, value in rows:
@@ -175,3 +181,24 @@ def _preview_arguments(name: str, arguments: dict[str, Any]) -> str:
         return json.dumps(arguments, ensure_ascii=False, indent=2)[:1600]
     except (TypeError, ValueError):
         return str(arguments)[:1600]
+
+
+class RichAgentEvents(AgentEvents):
+    """Route agent events to the Rich terminal interface."""
+
+    def thinking(self, label: str):
+        return thinking(label)
+
+    def assistant(self, text: str) -> None:
+        assistant(text)
+
+    def tool_call(
+        self, name: str, arguments: dict[str, Any], call_id: str = ""
+    ) -> None:
+        tool_call(name, arguments)
+
+    def tool_result(self, name: str, result: str, call_id: str = "") -> None:
+        tool_result(name, result)
+
+    def plan(self, steps: list[str], note: str = "") -> None:
+        plan(steps, note)

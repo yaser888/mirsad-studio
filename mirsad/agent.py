@@ -7,8 +7,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from . import ui
 from .config import Settings
+from .events import AgentEvents
 from .memory import Session, SessionStore, context_messages
 from .prompts import STEP_LIMIT_NOTICE, build_system_prompt
 from .providers.base import AssistantTurn, BaseProvider, ToolCall
@@ -16,6 +16,10 @@ from .tools import Tool, build_registry
 from .tools.registry import ToolRegistry
 
 ApprovalCallback = Callable[[Tool, dict[str, Any]], bool]
+
+
+class AgentCancelled(RuntimeError):
+    """Raised when the user stops a run."""
 
 
 class Agent:
@@ -29,12 +33,16 @@ class Agent:
         session: Session,
         store: SessionStore,
         approval: ApprovalCallback | None = None,
+        events: AgentEvents | None = None,
+        cancel_check: Callable[[], bool] | None = None,
     ) -> None:
         self.settings = settings
         self.provider = provider
         self.session = session
         self.store = store
         self.approval = approval
+        self.events = events or AgentEvents()
+        self.cancel_check = cancel_check
         self.plan: list[str] = list(session.plan)
 
         self.session.provider = settings.provider
@@ -56,7 +64,11 @@ class Agent:
 
         try:
             for step in range(1, self.settings.max_steps + 1):
-                with ui.thinking(f"Mirsad is thinking - step {step}/{self.settings.max_steps}"):
+                self._ensure_active()
+                self.events.step(step, self.settings.max_steps)
+                with self.events.thinking(
+                    f"Mirsad is thinking - step {step}/{self.settings.max_steps}"
+                ):
                     turn = self.provider.chat(
                         self._build_messages(),
                         tools=self.registry.specs(),
@@ -67,20 +79,21 @@ class Agent:
                 self._save()
 
                 if turn.content and calls:
-                    ui.assistant(turn.content)
+                    self.events.assistant(turn.content)
 
                 if not calls:
                     answer = (turn.content or "").strip()
                     return answer or "(The model returned an empty response.)"
 
                 for call_id, call in calls:
-                    ui.tool_call(call.name, call.arguments)
+                    self._ensure_active()
+                    self.events.tool_call(call.name, call.arguments, call_id)
                     result = self.registry.execute(
                         call.name,
                         call.arguments,
                         approve=self._approve,
                     )
-                    ui.tool_result(call.name, result)
+                    self.events.tool_result(call.name, result, call_id)
                     self.session.messages.append(
                         {
                             "role": "tool",
@@ -180,9 +193,7 @@ class Agent:
         message: dict[str, Any] = {
             "role": "assistant",
             "content": (
-                turn.content
-                if turn.content
-                else (None if serialized_calls else "")
+                turn.content if turn.content else (None if serialized_calls else "")
             ),
         }
         if serialized_calls:
@@ -194,8 +205,15 @@ class Agent:
         self.plan = list(steps)
         self.session.plan = list(steps)
         self._save()
-        ui.plan(self.plan, note)
+        self.events.plan(self.plan, note)
         return f"Plan updated with {len(self.plan)} step(s)."
+
+    def _ensure_active(self) -> None:
+        if self.cancel_check is None or not self.cancel_check():
+            return
+        self._close_pending_tool_calls()
+        self._save()
+        raise AgentCancelled("Run stopped by the user.")
 
     def _close_pending_tool_calls(self) -> None:
         """Add synthetic results so an interrupted turn remains valid history."""
@@ -239,7 +257,8 @@ class Agent:
         return bool(self.approval(tool, arguments))
 
     def _finish_after_step_limit(self) -> str:
-        with ui.thinking("Preparing a summary"):
+        self._ensure_active()
+        with self.events.thinking("Preparing a summary"):
             turn = self.provider.chat(
                 self._build_messages(notice=STEP_LIMIT_NOTICE),
                 tools=None,

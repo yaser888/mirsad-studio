@@ -35,7 +35,9 @@ def test_write_read_edit_and_search(tmp_path):
         approve=_allow,
     )
     assert "Edited" in edited
-    assert "return 'hello'" in (tmp_path / "src" / "hello.py").read_text(encoding="utf-8")
+    assert "return 'hello'" in (tmp_path / "src" / "hello.py").read_text(
+        encoding="utf-8"
+    )
 
     listed = registry.execute("list_files", {"path": "src", "pattern": "*.py"})
     assert "hello.py" in listed
@@ -77,9 +79,7 @@ def test_command_runs_and_blocks_destructive(tmp_path):
     assert "mirsad-ok" in result
     assert "Exit code: 0" in result
 
-    blocked = registry.execute(
-        "run_command", {"command": "rm -rf /"}, approve=_allow
-    )
+    blocked = registry.execute("run_command", {"command": "rm -rf /"}, approve=_allow)
     assert "Blocked" in blocked
 
     blocked_windows = registry.execute(
@@ -92,9 +92,7 @@ def test_command_runs_and_blocks_destructive(tmp_path):
 
 def test_command_handles_arabic_output(tmp_path):
     registry = build_registry(tmp_path)
-    result = registry.execute(
-        "run_command", {"command": "echo مرحبا"}, approve=_allow
-    )
+    result = registry.execute("run_command", {"command": "echo مرحبا"}, approve=_allow)
     assert "مرحبا" in result
 
 
@@ -130,9 +128,10 @@ def test_unknown_tool_and_arguments(tmp_path):
     registry = build_registry(tmp_path)
 
     assert "unknown tool" in registry.execute("nope", {}).lower()
-    assert "unknown argument" in registry.execute(
-        "read_file", {"path": "x", "bogus": 1}
-    ).lower()
+    assert (
+        "unknown argument"
+        in registry.execute("read_file", {"path": "x", "bogus": 1}).lower()
+    )
     assert "missing required argument" in registry.execute("read_file", {}).lower()
 
 

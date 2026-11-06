@@ -109,7 +109,7 @@ class SessionStore:
         except (OSError, json.JSONDecodeError) as exc:
             raise ValueError(f"Could not read session {session_id}: {exc}") from exc
         if not isinstance(data, dict):
-            raise ValueError(f"Session file is invalid: {path}")  # noqa: TRY004
+            raise ValueError(f"Session file is invalid: {path}")
         if not data.get("id"):
             data["id"] = session_id
         return Session.from_dict(data)

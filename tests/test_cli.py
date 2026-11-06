@@ -45,3 +45,32 @@ def test_sessions_list_empty(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "SESSIONS_DIR", tmp_path / "sessions")
 
     assert cli.main(["sessions", "list"]) == 0
+
+
+def test_studio_command_is_exposed():
+    args = cli.build_parser().parse_args(
+        [
+            "studio",
+            "--demo",
+            "--view",
+            "settings",
+            "--no-gpu",
+            "--screenshot",
+            "out.png",
+            "--scroll",
+            "bottom",
+            "--width",
+            "1600",
+            "--height",
+            "1000",
+        ]
+    )
+
+    assert args.command == "studio"
+    assert args.demo is True
+    assert args.view == "settings"
+    assert args.no_gpu is True
+    assert args.screenshot == "out.png"
+    assert args.scroll == "bottom"
+    assert args.width == 1600
+    assert args.height == 1000

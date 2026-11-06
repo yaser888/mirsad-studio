@@ -11,10 +11,12 @@ from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 import httpx
 
+from .. import __version__
+
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/126.0 Safari/537.36 MirsadAgent/0.1"
+    f"Chrome/126.0 Safari/537.36 MirsadAgent/{__version__}"
 )
 
 MAX_PAGE_CHARS = 9000
@@ -165,7 +167,9 @@ def web_fetch(url: str, max_chars: int = MAX_PAGE_CHARS) -> str:
 
     content_type = response.headers.get("content-type", "").lower()
     if "html" in content_type or "<html" in response.text[:500].lower():
-        title_match = re.search(r"<title[^>]*>(.*?)</title>", response.text, re.IGNORECASE | re.DOTALL)
+        title_match = re.search(
+            r"<title[^>]*>(.*?)</title>", response.text, re.IGNORECASE | re.DOTALL
+        )
         title = _clean_text(title_match.group(1)) if title_match else url
         text = _html_to_text(response.text)
         header = f"# {title}\nURL: {response.url}\n"
@@ -182,7 +186,10 @@ def web_fetch(url: str, max_chars: int = MAX_PAGE_CHARS) -> str:
     if not text:
         return f"{header}(page contained no readable text)"
     if len(text) > max_chars:
-        text = text[:max_chars] + f"\n... [truncated, {len(text) - max_chars} characters omitted]"
+        text = (
+            text[:max_chars]
+            + f"\n... [truncated, {len(text) - max_chars} characters omitted]"
+        )
     return header + "\n" + text
 
 

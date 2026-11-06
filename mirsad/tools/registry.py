@@ -57,9 +57,8 @@ class ToolRegistry:
     ) -> str:
         tool = self._tools.get(name)
         if tool is None:
-            return (
-                f"Error: unknown tool '{name}'. Available tools: "
-                + ", ".join(self.names())
+            return f"Error: unknown tool '{name}'. Available tools: " + ", ".join(
+                self.names()
             )
 
         if arguments is None:

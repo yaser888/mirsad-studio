@@ -22,7 +22,9 @@ def resolve_spec(settings: Settings) -> ProviderSpec:
 
 
 def resolve_model(settings: Settings, spec: ProviderSpec) -> str:
-    return (settings.model or os.environ.get("MIRSAD_MODEL") or spec.default_model).strip()
+    return (
+        settings.model or os.environ.get("MIRSAD_MODEL") or spec.default_model
+    ).strip()
 
 
 def provider_key(spec: ProviderSpec) -> str | None:

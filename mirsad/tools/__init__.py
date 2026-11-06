@@ -148,7 +148,10 @@ def build_registry(
             parameters={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Text or regex to find."},
+                    "query": {
+                        "type": "string",
+                        "description": "Text or regex to find.",
+                    },
                     "path": {
                         "type": "string",
                         "description": "Directory or file to search. Default '.'.",

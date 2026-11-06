@@ -80,8 +80,18 @@ def test_anthropic_message_conversion_groups_tool_results():
                 }
             ],
         },
-        {"role": "tool", "tool_call_id": "call_1", "name": "read_file", "content": "ok"},
-        {"role": "tool", "tool_call_id": "call_2", "name": "read_file", "content": "two"},
+        {
+            "role": "tool",
+            "tool_call_id": "call_1",
+            "name": "read_file",
+            "content": "ok",
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_2",
+            "name": "read_file",
+            "content": "two",
+        },
     ]
 
     system, converted = convert_messages(messages)

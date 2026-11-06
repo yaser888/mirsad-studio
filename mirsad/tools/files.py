@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import locale
+import os
 import platform
 import re
 import shutil
 import subprocess
 from pathlib import Path
+
+from ..security.policy import is_dangerous_command, is_secret_file
 
 MAX_READ_BYTES = 1_000_000
 MAX_READ_LINES = 500
@@ -32,39 +35,67 @@ SKIP_DIRS = {
 }
 
 BINARY_SUFFIXES = {
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".bmp", ".tiff",
-    ".pdf", ".zip", ".gz", ".tar", ".7z", ".rar", ".exe", ".dll", ".so",
-    ".dylib", ".pyc", ".pyo", ".class", ".jar", ".mp3", ".mp4", ".mov",
-    ".avi", ".woff", ".woff2", ".ttf", ".otf", ".sqlite", ".db",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".ico",
+    ".bmp",
+    ".tiff",
+    ".pdf",
+    ".zip",
+    ".gz",
+    ".tar",
+    ".7z",
+    ".rar",
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".pyc",
+    ".pyo",
+    ".class",
+    ".jar",
+    ".mp3",
+    ".mp4",
+    ".mov",
+    ".avi",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".sqlite",
+    ".db",
 }
 
 _ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
-# Commands that are refused regardless of approval. These target destructive
-# system-wide operations, not ordinary project work.
-_DANGEROUS_PATTERNS = [
-    re.compile(
-        r"\brm\s+(-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r)\s+"
-        r"(?:[a-z]:\\[^\s]*|/|~|\$home)(?:\s|$)",
-        re.IGNORECASE,
-    ),
-    re.compile(r"\brm\s+-rf\s+--no-preserve-root\b", re.IGNORECASE),
-    re.compile(r"\bmkfs(\.[a-z0-9]+)?\b", re.IGNORECASE),
-    re.compile(r"\bformat\s+[a-z]:", re.IGNORECASE),
-    re.compile(
-        r"\b(diskpart|clear-disk|initialize-disk|format-volume)\b", re.IGNORECASE
-    ),
-    re.compile(r"\b(shutdown|reboot|halt|poweroff)\b", re.IGNORECASE),
-    re.compile(r"\bremove-item\b[^\n]*\b-recurse\b[^\n]*[a-z]:\\", re.IGNORECASE),
-    re.compile(r"\bdel\s+/[fsq]\b[^\n]*[a-z]:\\", re.IGNORECASE),
-    re.compile(r"\b(rd|rmdir)\s+/s\s+/q\s+[a-z]:\\", re.IGNORECASE),
-    re.compile(r"\bdd\s+if=.*\bof=/dev/(sd|nvme|hd)", re.IGNORECASE),
-    re.compile(r":\(\)\s*\{\s*:\|:&\s*\};:", re.IGNORECASE),
-]
-
 
 class ToolError(RuntimeError):
     """A recoverable tool error shown to the model."""
+
+
+def _secret_guard_enabled() -> bool:
+    return os.environ.get("MIRSAD_ALLOW_SECRET_FILES", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _ensure_not_secret(target: Path, workdir: Path) -> None:
+    if not _secret_guard_enabled() or not is_secret_file(target.name):
+        return
+    try:
+        display = target.relative_to(Path(workdir).resolve())
+    except ValueError:
+        display = target
+    raise ToolError(
+        f"Blocked by the secret guard: '{display}' looks like a credential file. "
+        "Set MIRSAD_ALLOW_SECRET_FILES=1 only if you explicitly need this."
+    )
 
 
 def _resolve(workdir: Path, raw: str) -> Path:
@@ -131,6 +162,7 @@ def read_file(
     end_line: int = 0,
 ) -> str:
     target = _resolve(workdir, path)
+    _ensure_not_secret(target, workdir)
     if target.is_dir():
         raise ToolError(f"'{path}' is a directory. Use list_files instead.")
     if not target.is_file():
@@ -158,7 +190,9 @@ def read_file(
         end = min(end, start + MAX_READ_LINES - 1)
     end = min(end, total)
 
-    numbered = [f"{number:>5} | {lines[number - 1]}" for number in range(start, end + 1)]
+    numbered = [
+        f"{number:>5} | {lines[number - 1]}" for number in range(start, end + 1)
+    ]
     header = f"# {target.relative_to(Path(workdir).resolve())} (lines {start}-{end} of {total})"
     body = "\n".join(numbered)
     if end < total:
@@ -168,18 +202,22 @@ def read_file(
 
 def write_file(workdir: Path, path: str, content: str) -> str:
     target = _resolve(workdir, path)
+    _ensure_not_secret(target, workdir)
     if target.is_dir():
         raise ToolError(f"'{path}' is a directory.")
     content = "" if content is None else str(content)
     existed = target.is_file()
     _write_text(target, content)
     action = "Overwrote" if existed else "Created"
-    line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
+    line_count = content.count("\n") + (
+        1 if content and not content.endswith("\n") else 0
+    )
     return f"{action} {target.relative_to(Path(workdir).resolve())} ({line_count} lines, {len(content)} bytes)."
 
 
 def edit_file(workdir: Path, path: str, old_string: str, new_string: str) -> str:
     target = _resolve(workdir, path)
+    _ensure_not_secret(target, workdir)
     if not target.is_file():
         raise ToolError(f"File not found: {path}")
     if not old_string:
@@ -210,7 +248,9 @@ def edit_file(workdir: Path, path: str, old_string: str, new_string: str) -> str
         updated = updated.replace("\n", "\r\n")
     _write_text(target, updated)
     line_number = working[: working.index(old_normalized)].count("\n") + 1
-    return f"Edited {target.relative_to(Path(workdir).resolve())} at line {line_number}."
+    return (
+        f"Edited {target.relative_to(Path(workdir).resolve())} at line {line_number}."
+    )
 
 
 def list_files(
@@ -221,6 +261,7 @@ def list_files(
 ) -> str:
     base = _resolve(workdir, path)
     if base.is_file():
+        _ensure_not_secret(base, workdir)
         return str(base.relative_to(Path(workdir).resolve()))
 
     max_entries = 300
@@ -232,6 +273,8 @@ def list_files(
         except ValueError:
             continue
         if any(part in SKIP_DIRS for part in relative.parts):
+            continue
+        if _secret_guard_enabled() and is_secret_file(item.name):
             continue
         try:
             display = relative.as_posix()
@@ -281,8 +324,12 @@ def search_text(
             break
         if not item.is_file() or item.suffix.lower() in BINARY_SUFFIXES:
             continue
+        if _secret_guard_enabled() and is_secret_file(item.name):
+            continue
         try:
-            relative_parts = item.relative_to(base if base.is_dir() else base.parent).parts
+            relative_parts = item.relative_to(
+                base if base.is_dir() else base.parent
+            ).parts
         except ValueError:
             relative_parts = item.parts
         if any(part in SKIP_DIRS for part in relative_parts):
@@ -307,7 +354,9 @@ def search_text(
     if not hits:
         return f"No matches for '{query}' in {scanned} scanned file(s)."
     header = f"{len(hits)} match(es) for '{query}' (scanned {scanned} files):"
-    suffix = "\n... (increase max_results to see more)" if len(hits) >= max_results else ""
+    suffix = (
+        "\n... (increase max_results to see more)" if len(hits) >= max_results else ""
+    )
     return _truncate(header + "\n" + "\n".join(hits) + suffix)
 
 
@@ -319,11 +368,10 @@ def run_command(workdir: Path, command: str, timeout: int = 60) -> str:
     if not command:
         raise ToolError("command must not be empty.")
 
-    for pattern in _DANGEROUS_PATTERNS:
-        if pattern.search(command):
-            raise ToolError(
-                "Blocked: this command looks system-destructive. Refusing to run it."
-            )
+    if is_dangerous_command(command):
+        raise ToolError(
+            "Blocked: this command looks system-destructive. Refusing to run it."
+        )
 
     try:
         timeout_seconds = max(1, min(int(timeout or 60), 600))
@@ -393,7 +441,9 @@ def _decode_output(data: bytes | str | None) -> str:
 
     candidates = ["utf-8", _console_encoding()]
     if platform.system() == "Windows":
-        candidates.extend([locale.getpreferredencoding(False), "cp720", "cp1256", "cp850"])
+        candidates.extend(
+            [locale.getpreferredencoding(False), "cp720", "cp1256", "cp850"]
+        )
     else:
         candidates.append(locale.getpreferredencoding(False))
     seen: set[str] = set()

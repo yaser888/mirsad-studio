@@ -45,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Examples:\n"
             "  mirsad init\n"
             "  mirsad chat\n"
-            "  mirsad ask \"summarize this project and run its tests\"\n"
+            '  mirsad ask "summarize this project and run its tests"\n'
             "  mirsad chat --provider ollama --model qwen2.5:7b\n"
             "  mirsad sessions list\n"
         ),
@@ -59,6 +59,72 @@ def build_parser() -> argparse.ArgumentParser:
     chat = subparsers.add_parser("chat", help="Start an interactive chat session.")
     _add_run_args(chat, with_session=True)
 
+    studio = subparsers.add_parser(
+        "studio",
+        help="Open Mirsad Studio, the desktop control surface.",
+        description=(
+            "Open the native desktop application. It shares the same engine, sessions, "
+            "provider settings, and audit trail as the terminal runtime."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  mirsad studio\n"
+            "  mirsad studio --view settings\n"
+            "  mirsad studio --demo\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    studio.add_argument(
+        "--version",
+        action="version",
+        version=f"Mirsad Studio {__version__}",
+    )
+    studio.add_argument(
+        "--demo",
+        action="store_true",
+        help="Open the interface with sample data and no runtime calls.",
+    )
+    studio.add_argument(
+        "--view",
+        choices=["home", "chat", "activity", "settings"],
+        default="home",
+        help="Surface to open first (default: home).",
+    )
+    studio.add_argument(
+        "--no-gpu",
+        action="store_true",
+        help="Use software rendering for constrained or virtual machines.",
+    )
+    studio.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print runtime and web-console diagnostics.",
+    )
+    studio.add_argument(
+        "--scroll",
+        metavar="ANCHOR",
+        default="",
+        help="Initial transcript anchor: top, mid, bottom, or a pixel offset.",
+    )
+    studio.add_argument(
+        "--screenshot",
+        metavar="PATH",
+        help="Render the window to a PNG file and exit (useful for documentation).",
+    )
+    studio.add_argument(
+        "--width",
+        type=int,
+        default=1440,
+        help="Initial window width (defaults to 1440).",
+    )
+    studio.add_argument(
+        "--height",
+        type=int,
+        default=900,
+        help="Initial window height (defaults to 900).",
+    )
+    studio.set_defaults()
+
     ask = subparsers.add_parser("ask", help="Run one request and print the answer.")
     _add_run_args(ask, with_session=True)
     ask.add_argument("prompt", nargs="+", help="The request for the agent.")
@@ -66,10 +132,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--quiet", action="store_true", help="Hide tool output; print only the answer."
     )
     ask.add_argument(
-        "--json", action="store_true", help="Print the result as JSON (implies --quiet)."
+        "--json",
+        action="store_true",
+        help="Print the result as JSON (implies --quiet).",
     )
 
-    sessions = subparsers.add_parser("sessions", help="List, inspect, or delete sessions.")
+    sessions = subparsers.add_parser(
+        "sessions", help="List, inspect, or delete sessions."
+    )
     session_sub = sessions.add_subparsers(dest="session_command")
     session_list = session_sub.add_parser("list", help="List saved sessions.")
     session_list.set_defaults(session_command="list")
@@ -83,7 +153,9 @@ def build_parser() -> argparse.ArgumentParser:
     tools = subparsers.add_parser("tools", help="List available agent tools.")
     tools.set_defaults()
 
-    providers = subparsers.add_parser("providers", help="List LLM providers and key status.")
+    providers = subparsers.add_parser(
+        "providers", help="List LLM providers and key status."
+    )
     providers.set_defaults()
 
     config = subparsers.add_parser("config", help="Show effective configuration.")
@@ -113,7 +185,9 @@ def _add_run_args(parser: argparse.ArgumentParser, with_session: bool) -> None:
         "-w", "--workdir", default=None, help="Workspace directory (default: cwd)."
     )
     parser.add_argument("--temperature", type=float, default=None, help="0.0-2.0.")
-    parser.add_argument("--max-steps", type=int, default=None, help="Agent step budget.")
+    parser.add_argument(
+        "--max-steps", type=int, default=None, help="Agent step budget."
+    )
     parser.add_argument(
         "--max-history", type=int, default=None, help="Messages sent as context."
     )
@@ -148,6 +222,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "chat":
             return cmd_chat(args)
+        if args.command == "studio":
+            return cmd_studio(args)
         if args.command == "ask":
             return cmd_ask(args)
         if args.command == "sessions":
@@ -163,12 +239,64 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         ui.warn("\nInterrupted.")
         return 130
-    except (ConfigError, MissingAPIKey, ProviderError, FileNotFoundError, ValueError) as exc:
+    except (
+        ConfigError,
+        MissingAPIKey,
+        ProviderError,
+        FileNotFoundError,
+        ValueError,
+    ) as exc:
         ui.error(str(exc))
         return 1
 
     parser.print_help()
     return 0
+
+
+# ── studio ──────────────────────────────────────────────────────────────
+
+
+def cmd_studio(args: argparse.Namespace) -> int:
+    """Launch the desktop application without making PySide6 a core dependency."""
+
+    try:
+        from .desktop.app import main as studio_main
+    except ImportError as exc:  # pragma: no cover - exercised without the extra
+        ui.error(
+            "Mirsad Studio needs the desktop runtime.\n"
+            'Install it with: pip install "mirsad-agent[desktop]"\n'
+            f"Details: {exc}"
+        )
+        return 2
+
+    studio_args = ["--view", args.view]
+    if args.demo:
+        studio_args.append("--demo")
+    if args.no_gpu:
+        studio_args.append("--no-gpu")
+    if args.verbose:
+        studio_args.append("--verbose")
+    if args.scroll:
+        studio_args.extend(["--scroll", args.scroll])
+    if args.screenshot:
+        studio_args.extend(
+            [
+                "--screenshot",
+                str(args.screenshot),
+                "--width",
+                str(args.width),
+                "--height",
+                str(args.height),
+            ]
+        )
+
+    try:
+        return studio_main(studio_args)
+    except KeyboardInterrupt:
+        return 130
+    except Exception as exc:  # noqa: BLE001 - surface a launch failure to the terminal
+        ui.error(f"Could not open Mirsad Studio: {exc}")
+        return 1
 
 
 # ── chat ────────────────────────────────────────────────────────────────
@@ -183,6 +311,7 @@ def cmd_chat(args: argparse.Namespace) -> int:
         session=session,
         store=store,
         approval=lambda tool, arguments: ui.confirm_tool(tool.name, arguments),
+        events=ui.RichAgentEvents(),
     )
     ui.banner(settings.provider, provider.model, str(settings.workdir), session.id)
     if agent.plan:
@@ -406,6 +535,7 @@ def cmd_ask(args: argparse.Namespace) -> int:
             session=session,
             store=store,
             approval=approve,
+            events=ui.RichAgentEvents(),
         )
         answer = agent.run_turn(prompt_text)
     finally:
@@ -536,7 +666,12 @@ def cmd_tools() -> int:
 
 
 def cmd_providers() -> int:
-    table = Table(title="LLM providers", border_style="cyan", header_style="dim", collapse_padding=True)
+    table = Table(
+        title="LLM providers",
+        border_style="cyan",
+        header_style="dim",
+        collapse_padding=True,
+    )
     table.add_column("Provider", style="bold", no_wrap=True)
     table.add_column("Default model", no_wrap=True)
     table.add_column("API key", no_wrap=True)

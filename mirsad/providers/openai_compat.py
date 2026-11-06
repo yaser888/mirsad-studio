@@ -21,7 +21,9 @@ class OpenAICompatibleProvider(BaseProvider):
         extra_headers: dict[str, str] | None = None,
         timeout: float = 120.0,
     ) -> None:
-        super().__init__(model=model, api_key=api_key, base_url=base_url, timeout=timeout)
+        super().__init__(
+            model=model, api_key=api_key, base_url=base_url, timeout=timeout
+        )
         self.name = name
         self.extra_headers = extra_headers or {}
 
@@ -80,9 +82,7 @@ class OpenAICompatibleProvider(BaseProvider):
             name = str(function.get("name") or "")
             arguments = _decode_arguments(function.get("arguments"))
             if name:
-                tool_calls.append(
-                    ToolCall(id=call_id, name=name, arguments=arguments)
-                )
+                tool_calls.append(ToolCall(id=call_id, name=name, arguments=arguments))
 
         return AssistantTurn(
             content=str(content) if content is not None else None,

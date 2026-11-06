@@ -1,191 +1,365 @@
-# Mirsad Agent
+<p align="center">
+  <img src="docs/assets/mark.svg" width="72" alt="Mirsad mark">
+</p>
 
-وكيل ذكاء اصطناعي متعدد الخطوات يعمل من الطرفية، مع أدوات تنفيذ حقيقية، ذاكرة جلسات دائمة، ودعم خمسة مزوّدي نماذج (OpenAI, Anthropic, OpenRouter, DeepSeek, Groq) بالإضافة إلى Ollama المحلي.
+<h1 align="center">Mirsad Studio</h1>
 
-A multi-step AI agent CLI with real tools, persistent sessions, and multi-provider LLM support.
+<p align="center"><strong>The local-first agent workspace that shows its work.</strong></p>
 
----
-
-## المزايا
-
-- **حلقة وكيل متعددة الخطوات**: يخطّط، ينفّذ الأدوات، يقرأ النتائج، ويعدّل خطته حتى إنجاز المهمة.
-- **أدوات حقيقية**: قراءة/كتابة/تعديل الملفات، البحث في الكود، تنفيذ أوامر PowerShell/bash، جلب صفحات الويب، والبحث في الويب.
-- **ذاكرة دائمة**: كل جلسة تُحفظ تلقائياً في `~/.mirsad/sessions/` ويمكن استئنافها لاحقاً.
-- **عدة مزوّدين**: OpenAI وAnthropic وOpenRouter وDeepSeek وGroq وOllama المحلي — بتبديل فوري.
-- **حواجز أمان**: كل أمر shell أو كتابة ملف يتطلب موافقتك افتراضياً، مع حظر الأوامر المدمّرة للنظام.
-- **حدود واضحة**: سقف خطوات، تقليم سياق المحادثة، وحدود لحجم المخرجات.
-- **واجهة عربية/إنجليزية**: الوكيل يرد بلغة رسالتك.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#the-studio">Studio tour</a> ·
+  <a href="#security-model">Security</a> ·
+  <a href="docs/SECURITY.md">Security brief</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a>
+</p>
 
 ---
 
-## المتطلبات
+Mirsad is an AI agent you can point at real work: a repository, a service, a
+directory of notes. It plans, reads files, edits code, runs commands, searches
+the web, and verifies the result — inside a workspace boundary, with a human
+approval on every sensitive action and a hash-chained record of everything it
+did.
 
-- Python **3.10+** (تم اختباره على 3.14)
-- PowerShell على Windows أو bash على Linux/macOS
-- مفتاح API لأحد المزوّدين، أو Ollama محلي
+Two surfaces share one engine:
 
----
+- **Mirsad Studio** — a native desktop control surface built with Qt and a
+  local HTML interface.
+- **Mirsad Agent** — the same runtime in the terminal, with persistent sessions,
+  interactive chat, and machine-readable one-shot runs.
 
-## التثبيت السريع (Windows)
+<p align="center">
+  <img src="docs/assets/overview.png" alt="Mirsad Studio overview" width="100%">
+  <br>
+  <em>Mirsad Studio: a calm overview for an agent that does not hide its work.</em>
+</p>
+
+## Why Mirsad
+
+- **A real loop, not a chat wrapper.** The agent plans, acts, observes tool
+  output, revises its plan, and continues until the work is done or the step
+  budget runs out. It can edit files and run tests in the workspace.
+- **Native desktop, not a web page in a frame.** Studio is a PySide6 window
+  with a hardened local Chromium profile, a native window frame, and a
+  QWebChannel bridge to the Python runtime.
+- **Approval is the default.** Shell commands and file writes stop for a
+  risk-scored approval. System-destructive commands are refused even after
+  approval. Auto-approve exists, but it is off by default and labelled clearly.
+- **Secrets stay sealed.** Provider keys are encrypted with Windows DPAPI for
+  the current user, never written to `config.json`, and masked in every payload
+  that crosses into the interface.
+- **Evidence, not vibes.** Sessions, approvals, tool calls, settings changes,
+  and credential operations are appended to a SHA-256 hash chain that both
+  surfaces can verify.
+- **Local-first by construction.** No telemetry. Sessions and configuration
+  live under `~/.mirsad`. Ollama works without an API key. The interface loads
+  only bundled local files.
+- **Bilingual conversation support.** The agent answers in the language of the
+  request. The interface is English-only and uses English numeral formatting,
+  including on Arabic-locale Windows installations.
+
+## Quick start
+
+### Requirements
+
+- Python **3.10+**
+- Windows 10/11 for the complete Studio experience
+- PowerShell on Windows; bash on Linux and macOS
+- An API key for one provider, or a local Ollama installation
+
+Studio is optimized for Windows. The CLI runs anywhere Python runs. On
+non-Windows platforms the encrypted vault is unavailable; use environment
+variables for provider keys instead.
+
+### Install from source
 
 ```powershell
-cd C:\Users\سكواد\mirsad-agent
+cd C:\Users\you\mirsad-agent
 
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+
+# CLI only
 pip install -e .
 
-mirsad init
+# CLI + native Studio
+pip install -e ".[desktop]"
 ```
 
-إذا منع PowerShell تنشيط البيئة:
+If PowerShell blocks activation:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-أو شغّل الأمر مباشرة دون تنشيط:
+Or call the virtual environment directly:
 
 ```powershell
 .\.venv\Scripts\mirsad.exe init
 ```
 
-### إضافة مفاتيح API
+### First run
 
 ```powershell
-notepad $HOME\.mirsad\.env
+mirsad init          # create ~/.mirsad, config.json, and a .env template
+mirsad studio        # open Mirsad Studio
 ```
 
-املأ المفتاح الذي ستستخدمه فقط:
+Add a provider key in **Settings → Model access → Seal key**. The key is
+encrypted into the local DPAPI vault. If you prefer environment variables,
+place the key in `~/.mirsad/.env` instead:
 
 ```dotenv
 OPENAI_API_KEY=sk-...
-# أو
-ANTHROPIC_API_KEY=sk-ant-...
-# أو
-OPENROUTER_API_KEY=sk-or-...
-# أو
-DEEPSEEK_API_KEY=sk-...
-# أو
-GROQ_API_KEY=gsk_...
 ```
 
-للنموذج المحلي:
+Then choose a provider and model in Studio, or pass them on the command line:
+
+```powershell
+mirsad chat --provider openai --model gpt-4o-mini
+```
+
+For a local model:
 
 ```powershell
 ollama pull qwen2.5:7b
 mirsad chat --provider ollama --model qwen2.5:7b
 ```
 
-### التشغيل دون تثبيت
+### Run without installing
 
 ```powershell
 pip install httpx rich
 python -m mirsad
 ```
 
----
-
-## الاستخدام
+Studio can also be opened directly:
 
 ```powershell
-mirsad init                         # إنشاء مجلد الإعدادات
-mirsad chat                         # جلسة تفاعلية جديدة
-mirsad chat -s 20261105-153045-a1b2 # استئناف جلسة
-mirsad ask "افحص هذا المشروع وشغّل الاختبارات"
-mirsad ask "كم عدد ملفات Python؟" --quiet
+mirsad-studio
+python -m mirsad.desktop.app
+```
+
+## The Studio
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/operations.png" alt="An operation in progress"></td>
+    <td width="50%"><img src="docs/assets/audit.png" alt="The audit trail"></td>
+  </tr>
+  <tr>
+    <td><em>Operations keep the conversation, the plan, and live tool activity in view.</em></td>
+    <td><em>The audit trail verifies every link in the hash chain.</em></td>
+  </tr>
+</table>
+
+### Overview
+
+A single command bar starts a new operation. Readiness cards show whether the
+selected provider has a key, whether the encrypted vault is available, and
+whether the audit chain verifies. Recent operations resume with one click.
+
+### Operations
+
+Each operation is a persistent session. The transcript shows assistant replies,
+write and edit cards, command results, and a live activity inspector. The plan
+stays visible as the agent advances through it. Long runs can be stopped safely;
+the current tool call is closed out and the interruption is recorded.
+
+Approvals arrive as a modal with the exact command or file change, a risk
+level, and the reasons behind it. Approve once, deny, or stop the run. Denials
+are returned to the model as a firm instruction not to retry the same action.
+
+### Audit trail
+
+Every entry displays its sequence number, local time, event, detail, and a
+short hash. **Verify chain** recomputes the SHA-256 links and reports the first
+broken line if the ledger has been modified. The ledger is append-only in
+normal operation and safe across multiple processes.
+
+### Settings
+
+Configure the provider, model, temperature, step budget, history window,
+workspace boundary, and auto-approve posture. Seal or remove provider keys.
+Choose the workspace with a native folder picker. The security posture card
+shows vault availability and audit-chain status.
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+N` | New operation |
+| `Ctrl+K` | Command palette |
+| `Ctrl+1` | Overview |
+| `Ctrl+2` | Current operation |
+| `Ctrl+3` | Audit trail |
+| `Ctrl+4` | Settings |
+| `Ctrl+Enter` | Start an operation from the overview composer |
+| `Enter` | Send a chat message |
+| `Shift+Enter` | Insert a line break in chat |
+| `Esc` | Close the palette or deny the current approval |
+
+### Demo mode
+
+For screenshots, design review, or a safe walkthrough:
+
+```powershell
+mirsad studio --demo
+```
+
+Demo mode renders sample operations and audit entries without calling a model
+or touching the real ledger. `mirsad studio --view settings` opens a specific
+surface.
+
+## The CLI
+
+```powershell
+mirsad init                          # create the config directory
+mirsad chat                          # interactive session
+mirsad chat -s 20261105-153045-a1b2  # resume a session
+mirsad ask "inspect this project and run the tests"
+mirsad ask "how many Python files?" --quiet
 mirsad sessions list
 mirsad sessions show <id>
+mirsad sessions path <id>
+mirsad sessions delete <id>
 mirsad tools
 mirsad providers
 mirsad config
+mirsad studio
 ```
 
-### جلسة تفاعلية
+`mirsad ask` supports `--quiet` for the answer alone and `--json` for a
+machine-readable envelope containing the answer, session ID, provider, model,
+and usage. JSON mode never mixes approval prompts into standard output.
 
-```
-$ mirsad chat
+### Run options
 
-MIRSAD AGENT
-provider  openai / gpt-4o-mini
-workspace C:\Users\سكواد\mirsad-agent
-session   20261105-153045-a1b2
-
-You › أضف ملف README وقم بتشغيل الاختبارات
-```
-
-أوامر داخل الجلسة:
-
-| الأمر | الوظيفة |
+| Option | Meaning |
 |---|---|
-| `/help` | عرض المساعدة |
-| `/exit` أو `/quit` | حفظ وخروج |
-| `/session` | تفاصيل الجلسة وملفها |
-| `/plan` | الخطة الحالية |
-| `/tools` | الأدوات المتاحة |
-| `/workdir [path]` | عرض/تغيير مجلد العمل |
-| `/model [name]` | عرض/تغيير النموذج |
-| `/provider [id]` | عرض/تغيير المزوّد |
-| `/yes` | تشغيل/إيقاف الموافقة التلقائية |
-| `/clear` | مسح سجل المحادثة |
-| `/new` | بدء جلسة جديدة |
+| `-p, --provider` | Provider ID |
+| `-m, --model` | Model override |
+| `-w, --workdir` | Workspace directory (default: current directory) |
+| `--temperature` | Sampling temperature, 0.0–2.0 |
+| `--max-steps` | Agent step budget |
+| `--max-history` | Messages kept in the context window |
+| `-y, --yes` | Auto-approve shell commands and file writes |
+| `-s, --session` | Resume an existing session |
+| `--quiet` | Print only the answer |
+| `--json` | Machine-readable result, implies `--quiet` |
 
----
+### In-session commands
 
-## المزوّدون
+| Command | Function |
+|---|---|
+| `/help` | Show help |
+| `/exit`, `/quit` | Save and exit |
+| `/session` | Session details and file path |
+| `/plan` | Current plan |
+| `/tools` | Available tools |
+| `/workdir [path]` | Show or change the workspace |
+| `/model [name]` | Show or change the model |
+| `/provider [id]` | Show or change the provider |
+| `/yes` | Toggle auto-approve |
+| `/clear` | Clear the conversation history |
+| `/new` | Start a new session |
 
-| المزوّد | متغيّر المفتاح | النموذج الافتراضي |
+## Providers
+
+| Provider | Key variable | Default model |
 |---|---|---|
 | `openai` | `OPENAI_API_KEY` | `gpt-4o-mini` |
 | `anthropic` | `ANTHROPIC_API_KEY` | `claude-sonnet-4-20250514` |
 | `openrouter` | `OPENROUTER_API_KEY` | `openai/gpt-4o-mini` |
 | `deepseek` | `DEEPSEEK_API_KEY` | `deepseek-chat` |
 | `groq` | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
-| `ollama` | لا يحتاج مفتاحاً | `qwen2.5:7b` |
+| `ollama` | No key required | `qwen2.5:7b` |
 
-اختر مزوّداً افتراضياً:
+`MIRSAD_BASE_URL` overrides the API endpoint. `MIRSAD_API_KEY` supplies a
+generic key for OpenAI-compatible services. `OLLAMA_BASE_URL` defaults to
+`http://localhost:11434/v1`.
 
-```powershell
-mirsad chat --provider deepseek
-$env:MIRSAD_PROVIDER = "openai"
-```
+## Tools
 
-يمكن تجاوز عنوان الـ API عبر `MIRSAD_BASE_URL`، ومفتاح عام عبر `MIRSAD_API_KEY` (مفيد لخدمات متوافقة مع OpenAI).
-
----
-
-## الأدوات
-
-| الأداة | تحتاج موافقة | الوظيفة |
+| Tool | Approval | Purpose |
 |---|---|---|
-| `read_file` | لا | قراءة ملف نصي بأرقام الأسطر |
-| `write_file` | نعم | إنشاء/استبدال ملف |
-| `edit_file` | نعم | استبدال نص فريد داخل ملف |
-| `list_files` | لا | استكشاف الملفات والمجلدات |
-| `search_text` | لا | بحث نصي/Regex مع رقم السطر |
-| `run_command` | نعم | تنفيذ PowerShell/bash وجمع الخرج |
-| `web_search` | لا | بحث ويب (Tavily أو DuckDuckGo) |
-| `web_fetch` | لا | جلب صفحة عامة وتحويلها لنص |
-| `update_plan` | لا | عرض/تحديث خطة المهمة |
+| `read_file` | No | Read a UTF-8 text file with line numbers |
+| `write_file` | **Yes** | Create or replace a file in the workspace |
+| `edit_file` | **Yes** | Replace one exact occurrence in a file |
+| `list_files` | No | Explore files and directories |
+| `search_text` | No | Literal or regex search with `file:line` results |
+| `run_command` | **Yes** | Run PowerShell/bash and capture output |
+| `web_search` | No | Tavily when configured, DuckDuckGo otherwise |
+| `web_fetch` | No | Fetch a public page; private/local addresses are blocked |
+| `update_plan` | No | Publish or revise the task plan |
 
-الأدوات محصورة داخل مجلد العمل: أي مسار خارجه يُرفض. كما تُحظر أوامر مثل `rm -rf /` و`format C:` و`diskpart` و`shutdown` حتى مع الموافقة.
+All file and shell tools are confined to the selected workspace. Path escapes,
+absolute paths outside the workspace, and symlink escapes are rejected. The
+secret-file guard blocks reading, writing, editing, listing, and searching
+credential-shaped files such as `.env`, private keys, and keystores. Set
+`MIRSAD_ALLOW_SECRET_FILES=1` only when you deliberately need to override this
+for a trusted task.
 
-الموافقة الافتراضية لكل جلسة يمكن تعطيلها بـ `-y/--yes` (بحذر)، أو تبديلها داخل الجلسة بـ `/yes`.
+System-destructive commands — disk formatting, shadow-copy deletion, recursive
+deletion of a drive root or home directory, shutdown, and similar operations —
+are refused even if auto-approve is enabled.
 
-### إعداد البحث في الويب
+### Optional web search
 
-- افتراضياً يستخدم **DuckDuckGo** دون مفتاح.
-- للحصول على نتائج أكثر موثوقية، ضع مفتاح Tavily في `~/.mirsad/.env`:
+DuckDuckGo works without a key. For more reliable result parsing, add a Tavily
+key to `~/.mirsad/.env`:
 
 ```dotenv
 TAVILY_API_KEY=tvly-...
 ```
 
----
+## Security model
 
-## الإعدادات
+Mirsad is built around layered controls rather than a single perimeter:
 
-ملف الإعدادات: `~/.mirsad/config.json`
+1. **Workspace boundary.** File reads, writes, edits, listings, searches, and
+   command execution resolve inside the selected workspace. Escapes fail closed.
+2. **Risk-scored approvals.** Shell commands, writes, edits, secret access, and
+   absolute targets are classified, explained, and gated. Approval is required
+   before execution; destructive commands are blocked outright.
+3. **DPAPI secret vault.** Provider keys saved in Studio are encrypted with
+   Windows DPAPI for the current user. The vault file contains ciphertext, not
+   plaintext. Keys are masked before reaching the interface.
+4. **Hash-chained audit trail.** Each entry commits to the previous one with
+   SHA-256. A modified line, broken link, or out-of-sequence entry fails
+   verification. An OS-level lock serializes appends across processes.
+5. **Redaction everywhere.** Token-shaped values and sensitive keys are
+   redacted from session payloads, UI events, risk summaries, and audit details.
+6. **Desktop hardening.** The Chromium profile has no persistent cookies, no
+   remote content access from local pages, no plugins or PDF viewer, no
+   JavaScript-opened windows, and restricted main-frame navigation. External
+   links open in the system browser only through an explicit bridge call.
+7. **Deny-by-default.** If no approval callback is registered, a tool that
+   requires approval is denied. A non-interactive JSON run cannot silently
+   approve sensitive actions.
+
+These controls are intentionally described as hardening, not as an
+“unbreakable” sandbox. The agent runs with the permissions of your desktop
+user. The audit chain detects modification but is not an external notary; an
+administrator who can rewrite the file can also recompute the chain. See
+[docs/SECURITY.md](docs/SECURITY.md) for the full threat model and limitations.
+
+## Configuration
+
+Configuration lives in `~/.mirsad` by default. Set `MIRSAD_HOME` to relocate
+the entire directory.
+
+| Path | Contents |
+|---|---|
+| `~/.mirsad/config.json` | Provider, model, limits, workspace, approval posture |
+| `~/.mirsad/.env` | Optional environment keys and defaults |
+| `~/.mirsad/sessions/` | Persistent session transcripts |
+| `~/.mirsad/vault.dat` | DPAPI-encrypted provider keys |
+| `~/.mirsad/audit.jsonl` | Hash-chained evidence ledger |
+| `~/.mirsad/audit.jsonl.lock` | Cross-process append lock |
+
+Example `config.json`:
 
 ```json
 {
@@ -195,101 +369,135 @@ TAVILY_API_KEY=tvly-...
   "max_steps": 12,
   "max_history": 80,
   "auto_approve": false,
-  "workdir": null
+  "workdir": "C:\\Users\\you\\project"
 }
 ```
 
-الأولوية: **خيارات سطر الأوامر > متغيرات البيئة > config.json**.
+Precedence: **command-line flags > environment variables > config.json >
+built-in defaults**.
 
-متغيرات البيئة المدعومة:
+Supported environment variables:
 
-```
+```text
 MIRSAD_PROVIDER, MIRSAD_MODEL, MIRSAD_TEMPERATURE, MIRSAD_MAX_STEPS,
 MIRSAD_MAX_HISTORY, MIRSAD_AUTO_APPROVE, MIRSAD_BASE_URL, MIRSAD_API_KEY,
-MIRSAD_HOME, OLLAMA_BASE_URL, TAVILY_API_KEY
+MIRSAD_HOME, MIRSAD_ALLOW_SECRET_FILES, OLLAMA_BASE_URL, TAVILY_API_KEY
 ```
 
-`MIRSAD_HOME` يغيّر مجلد الإعدادات والجلسات (افتراضياً `~/.mirsad`).
+## How the agent works
 
----
+1. Your message is appended to the session and saved.
+2. Mirsad sends the system prompt, the trimmed conversation, the current plan,
+   and the tool schemas to the selected provider.
+3. If the model requests tools, each call is validated, risk-assessed, and — for
+   sensitive tools — held for approval. Results are appended to the transcript.
+4. The loop repeats until the model answers without tool calls or the step
+   budget is exhausted.
+5. At the limit, the model is asked to summarize what was completed and what
+   remains, without running further tools.
 
-## كيف يعمل الوكيل؟
+The default step budget is 12. The context window keeps the last 80 messages by
+default while preserving tool-call/result pairing. Tool output is capped before
+it returns to the model.
 
-1. تُضاف رسالتك إلى الجلسة وتُحفظ.
-2. يُرسل النظام + سجل المحادثة + تعريف الأدوات إلى النموذج.
-3. إذا طلب النموذج أدوات، تُنفّذ (بعد موافقتك عند الحاجة) وتُضاف النتائج.
-4. تتكرر الحلقة حتى يرد النموذج دون أدوات أو ينفد سقف الخطوات.
-5. عند بلوغ السقف، يُطلب من النموذج تلخيص ما أُنجز وما تبقّى دون تنفيذ أدوات إضافية.
+## Architecture
 
-سقف الخطوات الافتراضي 12، ويمكن تغييره بـ `--max-steps`. يُقلَّم السياق المُرسل إلى آخر 80 رسالة (`--max-history`) مع الحفاظ على اقتران نتائج الأدوات بنداءاتها.
-
----
-
-## هيكل المشروع
-
-```
-mirsad-agent/
-├── mirsad/
-│   ├── __main__.py          # python -m mirsad
-│   ├── cli.py               # أوامر CLI والجلسة التفاعلية
-│   ├── agent.py             # حلقة plan → act → observe
-│   ├── config.py            # الإعدادات و.env
-│   ├── memory.py            # الجلسات والتقليم
-│   ├── prompts.py           # موجه النظام
-│   ├── ui.py                # واجهة Rich
-│   ├── providers/
-│   │   ├── base.py          # الواجهة المشتركة والأخطاء
-│   │   ├── openai_compat.py # OpenAI/OpenRouter/DeepSeek/Groq/Ollama
-│   │   ├── anthropic.py     # تحويل رسائل Anthropic الأصلية
-│   │   └── factory.py       # إنشاء المزوّد
-│   └── tools/
-│       ├── registry.py      # التسجيل والتحقق والموافقة
-│       ├── files.py         # الملفات والأوامر
-│       └── web.py           # البحث والجلب
-├── tests/
-├── pyproject.toml
-├── .env.example
-└── README.md
+```text
+mirsad/
+├── agent.py              Plan → act → observe loop, cancellation, step budget
+├── events.py             Front-end-neutral event hooks
+├── cli.py                Argument parsing, chat REPL, one-shot runs
+├── config.py             Paths, .env loading, settings persistence
+├── memory.py             Session store and context trimming
+├── prompts.py            System prompt and step-limit notice
+├── ui.py                 Rich terminal renderer
+├── providers/            OpenAI-compatible, Anthropic, factory, key status
+├── tools/                Registry, file/shell tools, web tools
+├── security/             Policy, redaction, DPAPI vault, audit, risk
+└── desktop/              Qt window, QWebChannel bridge, HTML/CSS/JS shell
+    ├── app.py            Entry point, locale, screenshots, crash guard
+    ├── bridge.py         Sessions, approvals, settings, keys, audit
+    ├── window.py         Native window and hardened web profile
+    ├── assets/           Application icon
+    └── web/              Bundled interface
 ```
 
----
+The core loop never writes to a terminal directly. It emits events; the Rich
+renderer and the Studio bridge subscribe independently. This is what keeps the
+two surfaces behaviorally identical. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for data flow, session format, and
+the cross-process audit protocol.
 
-## الاختبارات
+## Development
 
 ```powershell
-pip install -e ".[dev]"
-pytest
+pip install -e ".[dev,desktop]"
+
+pytest                        # 78 tests, no network calls
+ruff check .                  # lint
+ruff format --check .         # formatting
 ```
 
-الاختبارات لا تتصل بالشبكة؛ تستخدم مزوّداً وهمياً وأدوات محلية.
+Tests cover the agent loop, cancellation, event emission, session persistence,
+provider adapters, CLI behavior, workspace and secret guards, redaction, the
+DPAPI vault, audit tamper detection, cross-process audit concurrency, and the
+desktop bridge lifecycle.
 
----
+Build distributions:
 
-## استكشاف الأخطاء
+```powershell
+pip install build
+python -m build
+```
 
-**`MissingAPIKey` أو خطأ 401**
-- تأكد من وجود المفتاح في `~/.mirsad/.env` أو متغيرات البيئة.
-- شغّل `mirsad providers` للتأكد من الحالة.
+The wheel ships the complete Studio interface under `mirsad/desktop/web`. The
+source distribution also includes tests, docs, and the landing page.
 
-**Ollama لا يعمل**
-- تأكد أن Ollama يعمل: `ollama list`
-- ثم: `mirsad chat -p ollama -m qwen2.5:7b`
+## Troubleshooting
 
-**الموافقة لا تظهر / الطرفية غير تفاعلية**
-- استخدم `-y` للسماح التلقائي، أو شغّل من طرفية حقيقية.
+**`MissingAPIKey` or HTTP 401**
 
-**مشاكل ترميز العربية على Windows**
-- استخدم Windows Terminal، أو فعّل UTF-8:
+- Confirm the key in `~/.mirsad/.env` or in Studio under **Settings**.
+- Run `mirsad providers` to see which providers report a configured key.
+- Remember that environment variables take precedence over the vault.
+
+**Studio will not start**
+
+- Install the desktop extra: `pip install -e ".[desktop]"`.
+- Try software rendering: `mirsad studio --no-gpu`.
+- Run with `mirsad studio --verbose` to see the Qt/web diagnostics.
+
+**Ollama is not reachable**
+
+- Confirm Ollama is running: `ollama list`.
+- Try `mirsad chat -p ollama -m qwen2.5:7b`.
+- Set `OLLAMA_BASE_URL` if the service is not on the default port.
+
+**Arabic text or ANSI output looks wrong on Windows**
+
+- Use Windows Terminal.
+- Enable UTF-8 in the session:
+
 ```powershell
 chcp 65001
 $env:PYTHONUTF8 = "1"
 ```
 
-**تعديل ملف خارج مجلد العمل**
-- غير مسموح افتراضياً. انتقل للمجلد المطلوب بـ `/workdir` أو ابدأ من هناك.
+The Studio forces an English locale so dates and numbers stay in English even
+when Windows is set to an Arabic locale.
 
----
+**A file outside the workspace is rejected**
 
-## الترخيص
+- This is the boundary working. Change the workspace in **Settings**, use
+  `-w/--workdir`, or start the agent from the target directory.
 
-MIT
+**The audit chain reports BROKEN**
+
+- Open the audit trail to see the first broken line. Do not edit the ledger to
+  hide the failure.
+- Preserve a copy before rotating or restoring the file. The verification
+  result is evidence of modification, not proof of who modified it.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

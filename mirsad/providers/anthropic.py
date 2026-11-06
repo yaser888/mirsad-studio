@@ -19,7 +19,9 @@ class AnthropicProvider(BaseProvider):
         timeout: float = 120.0,
         max_tokens: int = 4096,
     ) -> None:
-        super().__init__(model=model, api_key=api_key, base_url=base_url, timeout=timeout)
+        super().__init__(
+            model=model, api_key=api_key, base_url=base_url, timeout=timeout
+        )
         self.max_tokens = max_tokens
 
     def chat(

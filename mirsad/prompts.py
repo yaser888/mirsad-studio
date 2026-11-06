@@ -18,7 +18,9 @@ def build_system_prompt(
 ) -> str:
     os_name = platform.system()
     shell = "PowerShell" if os_name == "Windows" else "bash"
-    plan_text = "\n".join(f"{index}. {step}" for index, step in enumerate(plan, start=1))
+    plan_text = "\n".join(
+        f"{index}. {step}" for index, step in enumerate(plan, start=1)
+    )
     if not plan_text:
         plan_text = "(no plan yet)"
 

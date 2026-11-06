@@ -45,11 +45,7 @@ class _Handler(BaseHTTPRequestHandler):
             finish_reason = "stop"
 
         payload = json.dumps(
-            {
-                "choices": [
-                    {"message": message, "finish_reason": finish_reason}
-                ]
-            }
+            {"choices": [{"message": message, "finish_reason": finish_reason}]}
         ).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -102,12 +98,13 @@ def test_cli_end_to_end_with_local_openai_server(tmp_path, monkeypatch, capsys):
     assert first["path"] == "/v1/chat/completions"
     assert first["authorization"] == "Bearer test-key"
     assert any(
-        spec["function"]["name"] == "write_file"
-        for spec in first["body"]["tools"]
+        spec["function"]["name"] == "write_file" for spec in first["body"]["tools"]
     )
 
     second = _Handler.requests[1]
     messages = second["body"]["messages"]
     assert any(message.get("role") == "tool" for message in messages)
-    tool_message = next(message for message in messages if message.get("role") == "tool")
+    tool_message = next(
+        message for message in messages if message.get("role") == "tool"
+    )
     assert "Created e2e.txt" in tool_message["content"]
