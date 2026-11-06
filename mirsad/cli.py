@@ -18,6 +18,7 @@ from rich.text import Text
 from . import __version__, ui
 from .agent import Agent
 from .config import (
+    AUDIT_FILE,
     CONFIG_FILE,
     ENV_FILE,
     SESSIONS_DIR,
@@ -31,6 +32,7 @@ from .memory import Session, SessionStore
 from .providers import PROVIDERS
 from .providers.base import BaseProvider, MissingAPIKey, ProviderError
 from .providers.factory import create_provider, key_status, resolve_model, resolve_spec
+from .security import AuditLog
 from .tools import build_registry
 
 # ── parser ──────────────────────────────────────────────────────────────
@@ -150,6 +152,30 @@ def build_parser() -> argparse.ArgumentParser:
     session_path = session_sub.add_parser("path", help="Print a session's file path.")
     session_path.add_argument("session_id")
 
+    audit = subparsers.add_parser(
+        "audit", help="Verify and export the hash-chained audit trail."
+    )
+    audit_sub = audit.add_subparsers(dest="audit_command")
+    audit_verify = audit_sub.add_parser("verify", help="Verify the SHA-256 hash chain.")
+    audit_verify.set_defaults(audit_command="verify")
+    audit_tail = audit_sub.add_parser("tail", help="Print the last audit entries.")
+    audit_tail.add_argument(
+        "-n", "--count", type=int, default=20, help="Number of entries to show."
+    )
+    audit_tail.add_argument(
+        "--full", action="store_true", help="Print full details without truncating."
+    )
+    audit_tail.set_defaults(audit_command="tail")
+    audit_export = audit_sub.add_parser("export", help="Export the audit trail.")
+    audit_export.add_argument(
+        "-o", "--output", default=None, help="Write to this file (default: stdout)."
+    )
+    audit_export.add_argument(
+        "--format", choices=["json", "markdown"], default="json", help="Export format."
+    )
+    audit_export.set_defaults(audit_command="export")
+    audit.set_defaults(audit_command=None)
+
     tools = subparsers.add_parser("tools", help="List available agent tools.")
     tools.set_defaults()
 
@@ -228,6 +254,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_ask(args)
         if args.command == "sessions":
             return cmd_sessions(args)
+        if args.command == "audit":
+            return cmd_audit(args)
         if args.command == "tools":
             return cmd_tools()
         if args.command == "providers":
@@ -647,6 +675,89 @@ def cmd_sessions(args: argparse.Namespace) -> int:
 
 
 # ── introspection ───────────────────────────────────────────────────────
+
+
+def cmd_audit(args: argparse.Namespace) -> int:
+    log = AuditLog(AUDIT_FILE)
+    command = getattr(args, "audit_command", None) or "verify"
+
+    if command == "verify":
+        result = log.verify()
+        ui.kv_table(
+            "Audit chain verification",
+            [
+                ("file", str(log.path)),
+                ("entries", str(result.entries)),
+                ("status", "ok" if result.ok else "BROKEN"),
+            ],
+        )
+        if result.ok:
+            ui.success(result.message)
+            return 0
+        ui.error(result.message)
+        return 1
+
+    if command == "tail":
+        entries = log.tail(getattr(args, "count", 20))
+        if not entries:
+            ui.info("No audit entries yet.")
+            return 0
+        full = bool(getattr(args, "full", False))
+        table = Table(
+            title="Audit trail",
+            border_style="cyan",
+            header_style="dim",
+            expand=True,
+        )
+        table.add_column("SEQ", no_wrap=True, justify="right")
+        table.add_column("TIME", no_wrap=True)
+        table.add_column("EVENT", no_wrap=True)
+        table.add_column("DETAILS", overflow="fold")
+        for entry in entries:
+            details = json.dumps(entry.get("details") or {}, ensure_ascii=False)
+            if not full and len(details) > 120:
+                details = details[:117] + "..."
+            table.add_row(
+                str(entry.get("seq", "")),
+                str(entry.get("ts", "")),
+                str(entry.get("event", "")),
+                details,
+            )
+        ui.console.print(table)
+        return 0
+
+    if command == "export":
+        try:
+            raw_lines = (
+                log.path.read_text(encoding="utf-8").splitlines()
+                if log.path.is_file()
+                else []
+            )
+            entries = [json.loads(line) for line in raw_lines if line.strip()]
+        except (OSError, json.JSONDecodeError) as exc:
+            ui.error(f"Could not export the audit trail: {exc}")
+            return 1
+        fmt = getattr(args, "format", "json")
+        output = getattr(args, "output", None)
+        if fmt == "json":
+            payload = json.dumps(entries, ensure_ascii=False, indent=2) + "\n"
+        else:
+            lines = ["# Mirsad audit trail", ""]
+            for entry in entries:
+                lines.append(
+                    f"- **seq {entry.get('seq')}** `{entry.get('ts')}` — {entry.get('event')}"
+                )
+                lines.append(f"  - hash: `{entry.get('hash')}`")
+            payload = "\n".join(lines) + "\n"
+        if output:
+            Path(output).write_text(payload, encoding="utf-8")
+            ui.success(f"Audit trail exported to {output}")
+        else:
+            print(payload, end="")
+        return 0
+
+    ui.warn("Unknown audit command. Try: mirsad audit verify")
+    return 2
 
 
 def cmd_tools() -> int:

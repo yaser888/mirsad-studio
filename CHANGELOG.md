@@ -56,6 +56,8 @@ First public-style release of **Mirsad Studio** and the **Mirsad Agent** runtime
   Hugging Face serverless inference, and Groq free inference.
 - White (light) UI theme for Mirsad Studio with a top-bar toggle, persisted
   on the device; native window framing adapts to the selected theme.
+- `mirsad audit` subcommands from the terminal: verify the hash chain, tail
+  the trail, and export it as JSON or Markdown.
 
 ### Security
 

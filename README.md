@@ -255,6 +255,9 @@ mirsad sessions delete <id>
 mirsad tools
 mirsad providers
 mirsad config
+mirsad audit verify
+mirsad audit tail -n 20
+mirsad audit export --format markdown -o trail.md
 mirsad studio
 ```
 
