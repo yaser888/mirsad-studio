@@ -72,7 +72,30 @@ Studio is optimized for Windows. The CLI runs anywhere Python runs. On
 non-Windows platforms the encrypted vault is unavailable; use environment
 variables for provider keys instead.
 
-### Install from source
+### Install from GitHub (recommended)
+
+```bash
+git clone https://github.com/yaser888/mirsad-studio.git
+cd mirsad-studio
+
+python -m venv .venv
+source .venv/bin/activate        # Linux / macOS
+# .\.venv\Scripts\Activate.ps1   # Windows PowerShell
+
+pip install -e ".[desktop]"      # CLI + native Studio
+```
+
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/yaser888/mirsad-studio.git
+cd mirsad-studio
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[desktop]"
+```
+
+### Install from source (this repository)
 
 ```powershell
 cd C:\Users\you\mirsad-agent
