@@ -618,6 +618,11 @@ h1, h2, p { margin-top: 0; }
 .approval-meta .mono { color: var(--copper); font-size: 10px; }
 .approval-meta span:last-child { color: var(--faint); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .approval-detail { max-height: 245px; overflow: auto; margin: 0; padding: 13px 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--ink-raised); color: var(--paper-soft); font-family: var(--mono); font-size: 10.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.approval-diff { margin-top: 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--ink-raised); overflow: hidden; }
+.approval-diff[hidden] { display: none; }
+.approval-diff-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 13px; border-bottom: 1px solid var(--line); color: var(--faint); font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; }
+.approval-diff-head span:last-child { letter-spacing: 0.08em; text-transform: none; }
+.approval-diff-body { display: block; max-height: 180px; overflow: auto; margin: 0; padding: 12px 13px; border: 0; background: transparent; color: var(--paper-soft); font-family: var(--mono); font-size: 10px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
 .approval-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .approval-reasons span { padding: 4px 7px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font-size: 9.5px; }
 .approval-foot { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 23px; border-top: 1px solid var(--line); background: rgba(10, 12, 11, 0.28); }

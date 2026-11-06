@@ -43,10 +43,36 @@ from ..security import (
     redact_structure,
 )
 from ..security.vault import VaultError
+from ..tools.files import read_workspace_file
+from ..tools.files import unified_diff as compute_unified_diff
 
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, default=str)
+
+
+def _approval_diff(tool_name: str, arguments: dict[str, Any], workdir: Path) -> str:
+    """Build a redacted unified diff for mutating tools before approval."""
+
+    path = str(arguments.get("path") or "")
+    if tool_name not in {"edit_file", "write_file"} or not path:
+        return ""
+    try:
+        old_text = read_workspace_file(workdir, path) or ""
+        if tool_name == "write_file":
+            new_text = str(arguments.get("content") or "")
+        else:
+            old_string = str(arguments.get("old_string") or "")
+            new_string = str(arguments.get("new_string") or "")
+            new_text = (
+                old_text.replace(old_string, new_string, 1)
+                if old_string and old_string in old_text
+                else new_string
+            )
+        diff_text = compute_unified_diff(old_text, new_text, path)
+    except Exception:  # noqa: BLE001 - display-only diff helper must never block approval
+        return ""
+    return redact(diff_text)
 
 
 def _digest(text: str) -> str:
@@ -715,6 +741,7 @@ class StudioBridge(QObject):
                 "risk_title": risk.title,
                 "reasons": list(risk.reasons),
                 "summary": risk.summary,
+                "diff": _approval_diff(tool.name, arguments, self._settings.workdir),
             },
         )
         approved = pending.event.wait(timeout=600)

@@ -48,6 +48,11 @@ First public-style release of **Mirsad Studio** and the **Mirsad Agent** runtime
 - Cross-process audit sequence race.
 - Studio audit state copy for broken chains.
 
+### Added (0.2.0 follow-up)
+
+- Inline unified-diff preview for mutating tool approvals
+  (`write_file` / `edit_file`) before the human checkpoint.
+
 ### Security
 
 - No claim of unbreakable protection. Controls are layered hardening with an

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 import locale
 import os
 import platform
@@ -198,6 +199,30 @@ def read_file(
     if end < total:
         body += f"\n... ({total - end} more lines; call read_file with start_line={end + 1})"
     return _truncate(f"{header}\n{body}")
+
+
+def read_workspace_file(workdir: Path, path: str) -> str | None:
+    """Return the raw in-workspace file text, or None when it is absent."""
+
+    target = _resolve(workdir, path)
+    if not target.is_file():
+        return None
+    return _read_text(target)
+
+
+def unified_diff(old: str, new: str, path: str = "file") -> str:
+    """Return a unified diff between two texts."""
+
+    old_lines = old.splitlines()
+    new_lines = new.splitlines()
+    diff_lines = list(
+        difflib.unified_diff(
+            old_lines, new_lines, fromfile=f"a/{path}", tofile=f"b/{path}", lineterm=""
+        )
+    )
+    if not diff_lines:
+        return f"No changes. {path} is unchanged."
+    return "\n".join(diff_lines)
 
 
 def write_file(workdir: Path, path: str, content: str) -> str:

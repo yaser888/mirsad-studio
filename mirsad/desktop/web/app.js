@@ -1384,6 +1384,11 @@ function showNextApproval() {
   $('#approval-tool').textContent = request.tool || 'tool';
   $('#approval-summary').textContent = request.summary || 'Review the payload before it runs.';
   $('#approval-detail').textContent = formatArguments(request.arguments);
+  const diffBox = document.getElementById('approval-diff');
+  const diffBody = document.getElementById('approval-diff-body');
+  const diff = String(request.diff || '');
+  if (diffBox) diffBox.hidden = !diff;
+  if (diffBody) diffBody.textContent = diff;
   const reasons = $('#approval-reasons');
   reasons.innerHTML = '';
   for (const reason of request.reasons || []) reasons.appendChild(el('span', '', reason));

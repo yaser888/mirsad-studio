@@ -158,3 +158,29 @@ def test_session_payload_redacts_credentials(studio):
     assert "sk-proj-" not in serialized
     assert "[REDACTED]" in serialized
     assert payload["title"].startswith("Use [REDACTED]")
+
+
+def test_approval_diff_renders_write_and_edit_changes(studio):
+    _bridge, tmp_path, _settings = studio
+
+    write_diff = bridge_module._approval_diff(
+        "write_file", {"path": "src/app.py", "content": "print('hi')\n"}, tmp_path
+    )
+    assert "+++ b/src/app.py" in write_diff
+    assert "print('hi')" in write_diff
+
+    edit_diff = bridge_module._approval_diff(
+        "edit_file",
+        {
+            "path": "src/app.py",
+            "old_string": "print('old')",
+            "new_string": "print('new')",
+        },
+        tmp_path,
+    )
+    assert "+++ b/src/app.py" in edit_diff
+
+    command_diff = bridge_module._approval_diff(
+        "run_command", {"command": "npm test"}, tmp_path
+    )
+    assert command_diff == ""

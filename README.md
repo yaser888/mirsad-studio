@@ -168,7 +168,9 @@ stays visible as the agent advances through it. Long runs can be stopped safely;
 the current tool call is closed out and the interruption is recorded.
 
 Approvals arrive as a modal with the exact command or file change, a risk
-level, and the reasons behind it. Approve once, deny, or stop the run. Denials
+level, and the reasons behind it. Mutations are rendered as an inline unified
+diff (`from` → `to`) before approval, so the operator sees exactly what the
+agent will write or overwrite. Approve once, deny, or stop the run. Denials
 are returned to the model as a firm instruction not to retry the same action.
 
 ### Audit trail
