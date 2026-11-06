@@ -1,6 +1,7 @@
 """OpenAI Chat Completions compatible provider.
 
-Works with OpenAI, OpenRouter, DeepSeek, Groq and local Ollama.
+Works with OpenAI, OpenRouter, DeepSeek, Groq, Google Gemini (AI Studio) and
+local Ollama, plus Hugging Face serverless inference.
 """
 
 from __future__ import annotations

@@ -5,7 +5,12 @@ import pytest
 from mirsad.config import ConfigError, Settings
 from mirsad.providers.anthropic import AnthropicProvider, convert_messages
 from mirsad.providers.base import MissingAPIKey
-from mirsad.providers.factory import create_provider, resolve_model, resolve_spec
+from mirsad.providers.factory import (
+    create_provider,
+    key_status,
+    resolve_model,
+    resolve_spec,
+)
 from mirsad.providers.openai_compat import OpenAICompatibleProvider
 
 
@@ -159,6 +164,43 @@ def test_factory_unknown_provider(tmp_path):
     settings = Settings(provider="no-such-provider", workdir=tmp_path)
     with pytest.raises(ConfigError):
         create_provider(settings)
+
+
+def test_factory_gemini_uses_free_tier_default(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-test")
+    settings = Settings(provider="gemini", workdir=tmp_path)
+
+    spec = resolve_spec(settings)
+    assert spec.env_key == "GEMINI_API_KEY"
+    assert spec.default_model == "gemini-2.0-flash"
+    assert spec.requires_key is True
+
+    provider = create_provider(settings)
+    assert provider.model == "gemini-2.0-flash"
+    assert (
+        provider.base_url == "https://generativelanguage.googleapis.com/v1beta/openai"
+    )
+
+
+def test_factory_huggingface_requires_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    settings = Settings(provider="huggingface", workdir=tmp_path)
+    with pytest.raises(MissingAPIKey):
+        create_provider(settings)
+
+
+def test_key_status_lists_catalog_providers():
+    statuses = {spec.id: has_key for spec, has_key in key_status()}
+    assert set(statuses) == {
+        "openai",
+        "anthropic",
+        "openrouter",
+        "deepseek",
+        "groq",
+        "gemini",
+        "huggingface",
+        "ollama",
+    }
 
 
 def test_resolve_default_model(monkeypatch):

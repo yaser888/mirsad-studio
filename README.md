@@ -299,11 +299,25 @@ and usage. JSON mode never mixes approval prompts into standard output.
 | `openrouter` | `OPENROUTER_API_KEY` | `openai/gpt-4o-mini` |
 | `deepseek` | `DEEPSEEK_API_KEY` | `deepseek-chat` |
 | `groq` | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
+| `gemini` | `GEMINI_API_KEY` | `gemini-2.0-flash` |
+| `huggingface` | `HF_TOKEN` | `meta-llama/Llama-3.2-3B-Instruct` |
 | `ollama` | No key required | `qwen2.5:7b` |
 
 `MIRSAD_BASE_URL` overrides the API endpoint. `MIRSAD_API_KEY` supplies a
 generic key for OpenAI-compatible services. `OLLAMA_BASE_URL` defaults to
 `http://localhost:11434/v1`.
+
+### Free AI servers
+
+The product can run against free AI endpoints:
+
+- **Google Gemini (AI Studio)** — free tier via the OpenAI-compatible endpoint
+  (`GEMINI_API_KEY`, default model `gemini-2.0-flash`).
+- **Hugging Face (serverless)** — free inference (`HF_TOKEN`, default model
+  `meta-llama/Llama-3.2-3B-Instruct`).
+- **Groq** — free inference tier (`GROQ_API_KEY`, default model
+  `llama-3.3-70b-versatile`).
+- **Ollama** — fully local and free (`ollama pull qwen2.5:7b`).
 
 ## Tools
 

@@ -52,6 +52,8 @@ First public-style release of **Mirsad Studio** and the **Mirsad Agent** runtime
 
 - Inline unified-diff preview for mutating tool approvals
   (`write_file` / `edit_file`) before the human checkpoint.
+- Free AI server integrations: Google Gemini through AI Studio (free tier),
+  Hugging Face serverless inference, and Groq free inference.
 
 ### Security
 
