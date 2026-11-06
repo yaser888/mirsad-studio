@@ -258,6 +258,7 @@ mirsad config
 mirsad audit verify
 mirsad audit tail -n 20
 mirsad audit export --format markdown -o trail.md
+mirsad doctor
 mirsad studio
 ```
 

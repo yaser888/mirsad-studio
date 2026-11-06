@@ -58,6 +58,8 @@ First public-style release of **Mirsad Studio** and the **Mirsad Agent** runtime
   on the device; native window framing adapts to the selected theme.
 - `mirsad audit` subcommands from the terminal: verify the hash chain, tail
   the trail, and export it as JSON or Markdown.
+- `mirsad doctor` health check: Python, home directory, config, sessions,
+  audit chain, vault, desktop runtime, and provider key coverage.
 
 ### Security
 

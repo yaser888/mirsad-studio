@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -18,10 +19,12 @@ from rich.text import Text
 from . import __version__, ui
 from .agent import Agent
 from .config import (
+    APP_DIR,
     AUDIT_FILE,
     CONFIG_FILE,
     ENV_FILE,
     SESSIONS_DIR,
+    VAULT_FILE,
     ConfigError,
     bootstrap_env,
     init_app,
@@ -179,6 +182,11 @@ def build_parser() -> argparse.ArgumentParser:
     tools = subparsers.add_parser("tools", help="List available agent tools.")
     tools.set_defaults()
 
+    doctor = subparsers.add_parser(
+        "doctor", help="Check the installation and environment health."
+    )
+    doctor.set_defaults()
+
     providers = subparsers.add_parser(
         "providers", help="List LLM providers and key status."
     )
@@ -256,6 +264,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_sessions(args)
         if args.command == "audit":
             return cmd_audit(args)
+        if args.command == "doctor":
+            return cmd_doctor(args)
         if args.command == "tools":
             return cmd_tools()
         if args.command == "providers":
@@ -758,6 +768,123 @@ def cmd_audit(args: argparse.Namespace) -> int:
 
     ui.warn("Unknown audit command. Try: mirsad audit verify")
     return 2
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    from .security import AuditLog, SecretVault
+
+    rows: list[tuple[str, str, str]] = []
+    failures = 0
+
+    def add(name: str, ok: bool | None, detail: str) -> None:
+        nonlocal failures
+        if ok is True:
+            status = "pass"
+        elif ok is None:
+            status = "warn"
+        else:
+            status = "fail"
+            failures += 1
+        rows.append((name, status, detail))
+
+    major, minor, micro = sys.version_info[:3]
+    add(
+        "Python >= 3.10",
+        sys.version_info >= (3, 10),
+        f"{major}.{minor}.{micro}",
+    )
+
+    if APP_DIR.is_dir():
+        add(
+            "Mirsad home writable",
+            os.access(APP_DIR, os.W_OK),
+            str(APP_DIR),
+        )
+    else:
+        add(
+            "Mirsad home writable",
+            None,
+            f"{APP_DIR} does not exist yet; run mirsad init",
+        )
+
+    if CONFIG_FILE.is_file():
+        try:
+            read_config_file()
+            add("config.json readable", True, str(CONFIG_FILE))
+        except Exception:  # noqa: BLE001 - report the failure, do not crash
+            add("config.json readable", False, str(CONFIG_FILE))
+    else:
+        add(
+            "config.json readable",
+            None,
+            f"{CONFIG_FILE} is missing; run mirsad init",
+        )
+
+    if SESSIONS_DIR.is_dir():
+        add("Sessions directory", os.access(SESSIONS_DIR, os.W_OK), str(SESSIONS_DIR))
+    else:
+        add(
+            "Sessions directory",
+            None,
+            f"{SESSIONS_DIR} does not exist yet; run mirsad init",
+        )
+
+    audit = AuditLog(AUDIT_FILE).verify()
+    add("Audit chain", audit.ok, audit.message)
+
+    vault = SecretVault(VAULT_FILE)
+    if vault.available:
+        add("Secret vault", True, "Windows DPAPI protected")
+    else:
+        add(
+            "Secret vault",
+            None,
+            "DPAPI vault is Windows-only; use MIRSAD_* environment variables",
+        )
+
+    try:
+        import PySide6
+
+        add(
+            "Desktop runtime (PySide6)",
+            True,
+            f"PySide6 {getattr(PySide6, '__version__', '?')}",
+        )
+    except ImportError:
+        add(
+            "Desktop runtime (PySide6)",
+            None,
+            'Not installed; run: pip install -e ".[desktop]"',
+        )
+
+    statuses = key_status()
+    needed = sum(1 for spec, _ok in statuses if spec.requires_key)
+    configured = sum(1 for _spec, ok in statuses if ok)
+    if configured:
+        add("Provider keys", True, f"{configured} of {needed} key(s) configured")
+    else:
+        add(
+            "Provider keys",
+            None,
+            "No provider key configured; run mirsad init and add a key in .env",
+        )
+
+    styles = {"pass": "green", "warn": "yellow", "fail": "red"}
+    table = Table(
+        title="Mirsad doctor", border_style="cyan", header_style="dim", expand=True
+    )
+    table.add_column("CHECK", style="bold", no_wrap=True)
+    table.add_column("STATUS", no_wrap=True)
+    table.add_column("DETAIL", overflow="fold")
+    for name, status, detail in rows:
+        table.add_row(name, f"[{styles[status]}]{status}[/{styles[status]}]", detail)
+    ui.console.print(table)
+
+    if failures:
+        ui.error(f"{failures} check(s) failed.")
+        return 1
+    ui.success("All checks passed.")
+    return 0
 
 
 def cmd_tools() -> int:
