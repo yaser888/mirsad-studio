@@ -14,6 +14,7 @@ const App = {
   bridge: null,
   connected: false,
   demo: false,
+  theme: 'dark',
   state: null,
   session: null,
   sessions: [],
@@ -165,6 +166,7 @@ function sleep(ms) {
 
 document.addEventListener('DOMContentLoaded', () => {
   bindStaticEvents();
+  applyTheme(currentTheme());
   buildDemoShell();
   const initial = new URLSearchParams(window.location.search).get('view');
   if (initial && ['home', 'chat', 'activity', 'settings'].includes(initial)) {
@@ -197,6 +199,11 @@ function connectWebChannel() {
         return;
       }
       App.bridge.event.connect(onBridgeEvent);
+      try {
+        if (hasWebChannel()) notify('set_theme', App.theme);
+      } catch (error) {
+        /* the native framing can stay on the last applied theme */
+      }
       invoke('bootstrap')
         .then((response) => {
           if (response && response.ok) {
@@ -1550,6 +1557,47 @@ function inlineMarkdown(value, token, blocks) {
 
 /* ── static events ─────────────────────────────────────────────────────── */
 
+const THEME_KEY = 'mirsad-theme';
+
+function applyTheme(theme) {
+  const next = theme === 'light' ? 'light' : 'dark';
+  App.theme = next;
+  document.documentElement.dataset.theme = next;
+  const toggle = document.getElementById('theme-toggle');
+  if (toggle) {
+    toggle.setAttribute(
+      'aria-label',
+      next === 'light' ? 'Switch to dark theme' : 'Switch to light theme'
+    );
+  }
+  const iconHost = document.querySelector('#theme-toggle svg use');
+  if (iconHost) iconHost.setAttribute('href', next === 'light' ? '#i-moon' : '#i-sun');
+  try {
+    if (App.connected && hasWebChannel()) notify('set_theme', next);
+  } catch (error) {
+    /* the native title bar can stay themed to the last applied theme */
+  }
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch (error) {
+    /* storage can be unavailable inside some webviews */
+  }
+}
+
+function toggleTheme() {
+  applyTheme(App.theme === 'light' ? 'dark' : 'light');
+}
+
+function currentTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === 'light' || stored === 'dark') return stored;
+  } catch (error) {
+    /* storage can be unavailable inside some webviews */
+  }
+  return 'dark';
+}
+
 function bindStaticEvents() {
   document.addEventListener('click', (event) => {
     const routeButton = event.target.closest('[data-route]');
@@ -1579,6 +1627,7 @@ function bindStaticEvents() {
   $('#command-trigger').addEventListener('click', openCommandPalette);
   $('#workspace-chip').addEventListener('click', pickWorkspace);
   $('#provider-chip').addEventListener('click', () => setRoute('settings'));
+  $('#theme-toggle').addEventListener('click', toggleTheme);
 
   $('#home-composer').addEventListener('submit', (event) => {
     event.preventDefault();

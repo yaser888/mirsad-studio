@@ -26,6 +26,36 @@
   --ease: 160ms cubic-bezier(0.2, 0.65, 0.3, 1);
 }
 
+[data-theme="light"] {
+  --ink: #f6f4ee;
+  --ink-raised: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f3f1ea;
+  --panel-3: #e9e6dd;
+  --paper: #1a1d1b;
+  --paper-soft: #4d524c;
+  --muted: #6f756e;
+  --faint: #8a9088;
+  --line: rgba(26, 29, 27, 0.09);
+  --line-strong: rgba(26, 29, 27, 0.18);
+  --copper: #c96a45;
+  --copper-bright: #d97e5c;
+  --copper-wash: rgba(217, 119, 87, 0.12);
+  --sage: #7d9170;
+  --danger: #c04a43;
+  --warning: #a97a3a;
+  --success: #6f9170;
+}
+
+[data-theme="light"] .tool-output { background: var(--ink-raised); }
+[data-theme="light"] .kbd { background: rgba(26, 29, 27, 0.04); }
+[data-theme="light"] .tool-card > summary:hover { background: rgba(26, 29, 27, 0.04); }
+[data-theme="light"] .ledger-row:hover { background: rgba(26, 29, 27, 0.04); }
+[data-theme="light"] .nav-item:hover { background: rgba(26, 29, 27, 0.05); }
+[data-theme="light"] .recent-item:hover { background: rgba(26, 29, 27, 0.05); }
+[data-theme="light"] .composer { box-shadow: 0 18px 50px rgba(26, 29, 27, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.65); }
+[data-theme="light"] .composer:focus-within { box-shadow: 0 18px 55px rgba(26, 29, 27, 0.12), 0 0 0 3px rgba(217, 119, 87, 0.06); }
+
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {

@@ -74,6 +74,8 @@ class StudioWindow(QMainWindow):
         self.setStyleSheet("QMainWindow { background: #0a0c0b; }")
 
         self._bridge = StudioBridge(self)
+        self._theme: str = "dark"
+        self._bridge.themeChanged.connect(self._on_theme_changed)
         self._profile = QWebEngineProfile(self)
         self._profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
         self._profile.setHttpAcceptLanguage("en-US,en;q=0.9")
@@ -132,9 +134,25 @@ class StudioWindow(QMainWindow):
 
     def showEvent(self, event):  # type: ignore[override]
         super().showEvent(event)
-        QTimer.singleShot(20, self._apply_dark_titlebar)
+        QTimer.singleShot(20, lambda: self._apply_dark_titlebar(self._theme))
 
-    def _apply_dark_titlebar(self) -> None:
+    def _on_theme_changed(self, theme: str) -> None:
+        self._theme = theme if theme in {"dark", "light"} else "dark"
+        self._apply_dark_titlebar(self._theme)
+        self._refresh_native_theme(self._theme)
+
+    def _refresh_native_theme(self, theme: str) -> None:
+        background = "#f6f4ee" if theme == "light" else "#0a0c0b"
+        self.setStyleSheet(f"QMainWindow {{ background: {background}; }}")
+        self._view.setStyleSheet(f"background: {background};")
+        try:
+            app = QApplication.instance()
+            if app is not None:
+                app.setPalette(_palette_for(theme))
+        except Exception:
+            LOGGER.debug("Could not apply the application palette", exc_info=True)
+
+    def _apply_dark_titlebar(self, theme: str = "dark") -> None:
         if os.name != "nt":
             return
         try:
@@ -144,20 +162,25 @@ class StudioWindow(QMainWindow):
             dwm.DwmSetWindowAttribute(
                 hwnd, 20, ctypes.byref(enabled), ctypes.sizeof(enabled)
             )
-            caption = ctypes.c_int(0x000F110E)  # COLORREF: BGR for #0e110f
+            if theme == "light":
+                caption = ctypes.c_int(0x00F6F4EE)  # COLORREF: BGR for #f6f4ee
+                border = ctypes.c_int(0x00FFFFFF)  # COLORREF: white border
+                text_color = ctypes.c_int(0x001A1D1B)  # BGR for #1a1d1b
+            else:
+                caption = ctypes.c_int(0x000F110E)  # COLORREF: BGR for #0e110f
+                border = ctypes.c_int(0x00161312)
+                text_color = ctypes.c_int(0x00E7EEF0)
             dwm.DwmSetWindowAttribute(
                 hwnd, 35, ctypes.byref(caption), ctypes.sizeof(caption)
             )
-            border = ctypes.c_int(0x00161312)
             dwm.DwmSetWindowAttribute(
                 hwnd, 34, ctypes.byref(border), ctypes.sizeof(border)
             )
-            text_color = ctypes.c_int(0x00E7EEF0)
             dwm.DwmSetWindowAttribute(
                 hwnd, 36, ctypes.byref(text_color), ctypes.sizeof(text_color)
             )
         except Exception:
-            LOGGER.debug("Could not apply the dark title bar", exc_info=True)
+            LOGGER.debug("Could not apply the title bar theme", exc_info=True)
 
     # ── lifecycle ────────────────────────────────────────────────────────
 
@@ -176,9 +199,21 @@ class StudioWindow(QMainWindow):
         super().closeEvent(event)
 
 
-def apply_application_style(app: QApplication) -> None:
-    app.setStyle("Fusion")
+def _palette_for(theme: str) -> QPalette:
     palette = QPalette()
+    if theme == "light":
+        palette.setColor(QPalette.ColorRole.Window, QColor("#f6f4ee"))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor("#1a1d1b"))
+        palette.setColor(QPalette.ColorRole.Base, QColor("#ffffff"))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#f3f1ea"))
+        palette.setColor(QPalette.ColorRole.Text, QColor("#1a1d1b"))
+        palette.setColor(QPalette.ColorRole.Button, QColor("#f3f1ea"))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor("#1a1d1b"))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor("#c96a45"))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#ffffff"))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#1a1d1b"))
+        return palette
     palette.setColor(QPalette.ColorRole.Window, QColor("#0a0c0b"))
     palette.setColor(QPalette.ColorRole.WindowText, QColor("#f0eee7"))
     palette.setColor(QPalette.ColorRole.Base, QColor("#0e110f"))
@@ -190,6 +225,11 @@ def apply_application_style(app: QApplication) -> None:
     palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#1b0f0a"))
     palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#161b17"))
     palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#f0eee7"))
-    app.setPalette(palette)
+    return palette
+
+
+def apply_application_style(app: QApplication, theme: str = "dark") -> None:
+    app.setStyle("Fusion")
+    app.setPalette(_palette_for(theme))
     if ICON_FILE.is_file():
         app.setWindowIcon(QIcon(str(ICON_FILE)))

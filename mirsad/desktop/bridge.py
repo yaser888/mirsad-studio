@@ -185,6 +185,7 @@ class StudioBridge(QObject):
     """The single object exposed to the local web UI through QWebChannel."""
 
     event = Signal(str, str)
+    themeChanged = Signal(str)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -193,6 +194,7 @@ class StudioBridge(QObject):
         self._audit = AuditLog(AUDIT_FILE)
         self._session: Session | None = None
         self._settings = self._load_settings_safely()
+        self._theme: str = "dark"
         self._thread: threading.Thread | None = None
         self._running = False
         self._cancel_event = threading.Event()
@@ -452,6 +454,17 @@ class StudioBridge(QObject):
         )
         self._thread.start()
         return _json({"ok": True, "session_id": session.id})
+
+    @Slot(str)
+    def set_theme(self, theme: str) -> str:
+        """Apply a UI theme ("dark" or "light") and notify the window."""
+
+        next_theme = (theme or "dark").strip().lower()
+        if next_theme not in {"dark", "light"}:
+            next_theme = "dark"
+        self._theme = next_theme
+        self.themeChanged.emit(next_theme)
+        return _json({"ok": True, "theme": next_theme})
 
     @Slot()
     def cancel_run(self) -> None:

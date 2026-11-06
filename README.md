@@ -58,6 +58,9 @@ Two surfaces share one engine:
 - **Bilingual conversation support.** The agent answers in the language of the
   request. The interface is English-only and uses English numeral formatting,
   including on Arabic-locale Windows installations.
+- **Dark and light themes.** Toggle between the signature observatory dark
+  theme and a clean white theme with the button in the top bar. Your choice is
+  remembered on this device.
 
 ## Quick start
 

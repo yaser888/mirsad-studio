@@ -54,6 +54,8 @@ First public-style release of **Mirsad Studio** and the **Mirsad Agent** runtime
   (`write_file` / `edit_file`) before the human checkpoint.
 - Free AI server integrations: Google Gemini through AI Studio (free tier),
   Hugging Face serverless inference, and Groq free inference.
+- White (light) UI theme for Mirsad Studio with a top-bar toggle, persisted
+  on the device; native window framing adapts to the selected theme.
 
 ### Security
 
