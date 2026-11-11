@@ -31,6 +31,14 @@ from .config import (
     load_settings,
     read_config_file,
 )
+from .licensing import (
+    LICENSE_FILE,
+    LicenseError,
+    issue_token,
+    license_status,
+    load_license,
+    save_license,
+)
 from .memory import Session, SessionStore
 from .providers import PROVIDERS
 from .providers.base import BaseProvider, MissingAPIKey, ProviderError
@@ -179,6 +187,39 @@ def build_parser() -> argparse.ArgumentParser:
     audit_export.set_defaults(audit_command="export")
     audit.set_defaults(audit_command=None)
 
+    activate = subparsers.add_parser(
+        "activate", help="Activate a Mirsad Pro license offline."
+    )
+    activate.add_argument("--key", required=True, help="The license token to verify.")
+    activate.set_defaults()
+
+    licensing = subparsers.add_parser(
+        "license", help="Show the current license status."
+    )
+    license_sub = licensing.add_subparsers(dest="license_command")
+    license_status = license_sub.add_parser("status", help="Show license status.")
+    license_status.set_defaults(license_command="status")
+    license_issue = license_sub.add_parser(
+        "issue", help="Issue a token (owner helper for Pro sales)."
+    )
+    license_issue.add_argument("--plan", choices=["pro", "team"], default="pro")
+    license_issue.add_argument("--to", dest="licensed_to", required=True)
+    license_issue.add_argument("--seats", type=int, default=1)
+    license_issue.add_argument("--days", type=int, default=365)
+    license_issue.set_defaults(license_command="issue")
+    licensing.set_defaults(license_command="status")
+
+    report = subparsers.add_parser(
+        "report", help="Generate a Pro compliance evidence pack."
+    )
+    report.add_argument(
+        "-o",
+        "--output",
+        default="mirsad-report.html",
+        help="Where to write the HTML pack.",
+    )
+    report.set_defaults()
+
     tools = subparsers.add_parser("tools", help="List available agent tools.")
     tools.set_defaults()
 
@@ -266,6 +307,12 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_audit(args)
         if args.command == "doctor":
             return cmd_doctor(args)
+        if args.command == "activate":
+            return cmd_activate(args)
+        if args.command == "license":
+            return cmd_license(args)
+        if args.command == "report":
+            return cmd_report(args)
         if args.command == "tools":
             return cmd_tools()
         if args.command == "providers":
@@ -884,6 +931,64 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         ui.error(f"{failures} check(s) failed.")
         return 1
     ui.success("All checks passed.")
+    return 0
+
+
+def cmd_activate(args: argparse.Namespace) -> int:
+    try:
+        info = save_license(args.key, path=LICENSE_FILE)
+    except LicenseError as exc:
+        ui.error(str(exc))
+        return 1
+    ui.success(
+        f"License activated: Mirsad {info.plan.upper()} for {info.licensed_to} "
+        f"({info.seats} seat(s), expires {info.expires_label})."
+    )
+    return 0
+
+
+def cmd_license(args: argparse.Namespace) -> int:
+    command = getattr(args, "license_command", None) or "status"
+    if command == "issue":
+        token = issue_token(
+            plan=args.plan,
+            licensed_to=args.licensed_to,
+            seats=args.seats,
+            days=args.days,
+        )
+        ui.console.print(token)
+        return 0
+    info, message = license_status(LICENSE_FILE)
+    ui.kv_table(
+        "License",
+        [
+            ("edition", info.plan.upper()),
+            ("licensed to", info.licensed_to or "—"),
+            ("seats", str(info.seats)),
+            ("expires", info.expires_label),
+        ],
+    )
+    if info.is_pro:
+        ui.success(message)
+    else:
+        ui.warn(message)
+    return 0
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    licence = load_license(LICENSE_FILE)
+    if not licence.is_pro:
+        ui.error("Mirsad Report is a Pro feature.")
+        ui.info(
+            "Activate a license with: mirsad activate --key <token>\n"
+            "Evaluate locally with: mirsad license issue --plan pro --to 'Your Name' --days 30"
+        )
+        return 3
+    from .report import build_report
+
+    output = Path(args.output)
+    output.write_text(build_report(licence), encoding="utf-8")
+    ui.success(f"Compliance evidence pack written to {output}")
     return 0
 
 

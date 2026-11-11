@@ -5,6 +5,33 @@ All notable changes to the Mirsad product are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-11-11
+
+Commercial and operational follow-up to 0.2.0. Everything remains local-first:
+no telemetry, no license server, no hosted dependency.
+
+### Added
+
+- Inline unified-diff preview for mutating tool approvals
+  (`write_file` / `edit_file`) before the human checkpoint.
+- Free AI server integrations: Google Gemini through AI Studio (free tier),
+  Hugging Face serverless inference, and Groq free inference.
+- White (light) UI theme for Mirsad Studio with a top-bar toggle, persisted
+  on the device; native window framing adapts to the selected theme.
+- `mirsad audit` subcommands from the terminal: verify the hash chain, tail
+  the trail, and export it as JSON or Markdown.
+- `mirsad doctor` health check: Python, home directory, config, sessions,
+  audit chain, vault, desktop runtime, and provider key coverage.
+- Commercial **Mirsad Pro** support: offline-signed license tokens (`activate`,
+  `license`, `license issue`), and a Pro-gated standalone compliance evidence
+  pack (`mirsad report`). See `docs/LICENSING.md`.
+- Pricing and edition section on the marketing site.
+
+### Security
+
+- No claim of unbreakable protection. Controls are layered hardening with an
+  explicit documented boundary; see `docs/SECURITY.md`.
+
 ## [0.2.0] - 2026-11-06
 
 First public-style release of **Mirsad Studio** and the **Mirsad Agent** runtime.
@@ -48,27 +75,10 @@ First public-style release of **Mirsad Studio** and the **Mirsad Agent** runtime
 - Cross-process audit sequence race.
 - Studio audit state copy for broken chains.
 
-### Added (0.2.0 follow-up)
-
-- Inline unified-diff preview for mutating tool approvals
-  (`write_file` / `edit_file`) before the human checkpoint.
-- Free AI server integrations: Google Gemini through AI Studio (free tier),
-  Hugging Face serverless inference, and Groq free inference.
-- White (light) UI theme for Mirsad Studio with a top-bar toggle, persisted
-  on the device; native window framing adapts to the selected theme.
-- `mirsad audit` subcommands from the terminal: verify the hash chain, tail
-  the trail, and export it as JSON or Markdown.
-- `mirsad doctor` health check: Python, home directory, config, sessions,
-  audit chain, vault, desktop runtime, and provider key coverage.
-
-### Security
-
-- No claim of unbreakable protection. Controls are layered hardening with an
-  explicit documented boundary; see `docs/SECURITY.md`.
-
 ## [0.1.0] - 2026-10-28
 
 - Initial Hermes-based agent runtime: terminal chat, tools, sessions, providers,
   persistent memory, multi-provider LLM support.
 
-[0.2.0]: https://github.com/mirsad/mirsad-agent/releases/tag/v0.2.0
+[0.3.0]: https://github.com/yaser888/mirsad-studio/releases/tag/v0.3.0
+[0.2.0]: https://github.com/yaser888/mirsad-studio/releases/tag/v0.2.0

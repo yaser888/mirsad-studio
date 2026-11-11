@@ -259,6 +259,9 @@ mirsad audit verify
 mirsad audit tail -n 20
 mirsad audit export --format markdown -o trail.md
 mirsad doctor
+mirsad license
+mirsad activate --key <token>
+mirsad report -o evidence.html
 mirsad studio
 ```
 
@@ -325,6 +328,25 @@ The product can run against free AI endpoints:
 - **Groq** — free inference tier (`GROQ_API_KEY`, default model
   `llama-3.3-70b-versatile`).
 - **Ollama** — fully local and free (`ollama pull qwen2.5:7b`).
+
+## Mirsad Pro
+
+Mirsad ships as a free, open **Community** edition (MIT). A commercial **Pro**
+edition is unlocked with a signed license token; verification is fully offline.
+
+```bash
+mirsad license                  # show the current edition and status
+mirsad activate --key <token>   # activate a Pro license
+mirsad report -o evidence.html  # compliance evidence pack (Pro feature)
+```
+
+```bash
+mirsad license issue --plan pro --to "Your Company" --days 365   # owner helper
+```
+
+See `docs/LICENSING.md` for the token format, the security model, and the
+honest limits of offline licensing. If you did not purchase a Pro license, the
+product remains fully usable as the Community edition.
 
 ## Tools
 

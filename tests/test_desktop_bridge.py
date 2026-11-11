@@ -7,6 +7,7 @@ import pytest
 
 pytest.importorskip("PySide6")
 
+from mirsad import __version__
 from mirsad.config import Settings
 from mirsad.desktop import bridge as bridge_module
 from mirsad.providers.base import MissingAPIKey
@@ -50,7 +51,7 @@ def test_bridge_bootstrap_and_session_lifecycle(studio):
     assert boot["ok"]
     state = boot["state"]
     assert state["app"] == "Mirsad Studio"
-    assert state["version"] == "0.2.0"
+    assert state["version"] == __version__
     assert state["audit"]["ok"]
     assert state["audit"]["entries"] == 1
     assert state["sessions"] == []
